@@ -67,13 +67,13 @@ public class TriggerStorageService implements IService {
   /**
    * @param path full path string of the time series. please make sure the time series is existed.
    */
-  public Trigger createTrigger(String className, String path, String id,
+  public Trigger createTrigger(String className, String path, String id, int enabledHooks,
       TriggerParameterConfiguration[] parameterConfigurations)
       throws TriggerInstanceLoadException, TriggerManagementException {
     lock.lock();
     try {
-      Trigger trigger = createTriggerInstanceFromJar(className, path, id, parameterConfigurations,
-          false);
+      Trigger trigger = createTriggerInstanceFromJar(className, path, id, enabledHooks,
+          parameterConfigurations, false);
       registerTriggerToConfigurationFile(trigger);
       return trigger;
     } finally {
