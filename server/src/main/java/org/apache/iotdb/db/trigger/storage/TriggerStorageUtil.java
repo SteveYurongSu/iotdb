@@ -34,10 +34,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.trigger.define.Trigger;
 import org.apache.iotdb.db.trigger.define.TriggerParameterConfiguration;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -118,10 +116,11 @@ public class TriggerStorageUtil {
       for (Element element : root.elements()) {
         TriggerParameterConfiguration[] parameterConfigurations = parseTriggerParameterConfigurationFromHookElement(
             element);
+        int enabledHooks = Integer.parseInt(element.attribute("enabledHooks").getText());
         boolean isActive = !"false".equals(element.attribute("isActive").getText());
         triggers.add(createTriggerInstanceFromJar(element.attribute("class").getText(),
             element.attribute("path").getText(), element.attribute("id").getText(),
-            parameterConfigurations, isActive));
+            enabledHooks, parameterConfigurations, isActive));
       }
     } catch (DocumentException e) {
       throw new TriggerInstanceLoadException(String
@@ -146,6 +145,7 @@ public class TriggerStorageUtil {
       element.addAttribute("class", trigger.getClass().getTypeName());
       element.addAttribute("path", trigger.getPath());
       element.addAttribute("id", trigger.getId());
+      element.addAttribute("enabledHooks", String.valueOf(trigger.getEnabledHooks()));
       element.addAttribute("isSynced", trigger.isSynced() ? "true" : "false");
       element.addAttribute("isActive", trigger.isActive() ? "true" : "false");
       if (0 < trigger.getParameters().length) {
@@ -206,16 +206,8 @@ public class TriggerStorageUtil {
     }
   }
 
-  /**
-   * Check if the full path of the time series exists. todo: remove triggers when the time series
-   * are removed.
-   */
-  public static void checkPath(String path) throws MetadataException {
-    MManager.getInstance().getNodeByPath(path);
-  }
-
   public static Trigger createTriggerInstanceFromJar(String className, String path,
-      String id, TriggerParameterConfiguration[] parameterConfigurations,
+      String id, int enabledHooks, TriggerParameterConfiguration[] parameterConfigurations,
       boolean isActive) throws TriggerInstanceLoadException {
     try {
       URL url = new URL(String
@@ -224,8 +216,9 @@ public class TriggerStorageUtil {
           .getContextClassLoader());
       Class<?> triggerClass = classLoader.loadClass(className);
       Constructor<?> constructor = triggerClass.getConstructor(String.class, String.class,
-          TriggerParameterConfiguration[].class, boolean.class);
-      return (Trigger) constructor.newInstance(path, id, parameterConfigurations, isActive);
+          int.class, TriggerParameterConfiguration[].class, boolean.class);
+      return (Trigger) constructor.newInstance(path, id, enabledHooks, parameterConfigurations,
+          isActive);
     } catch (ClassNotFoundException | MalformedURLException | IllegalAccessException
         | InstantiationException | InvocationTargetException | NoSuchMethodException e) {
       throw new TriggerInstanceLoadException(String.format(
