@@ -23,13 +23,15 @@ public abstract class Trigger {
 
   private final String path;
   private final String id;
+  private final int enabledHooks;
   private final TriggerParameterConfiguration[] parameters;
   private boolean active;
 
-  public Trigger(String path, String id, TriggerParameterConfiguration[] parameters,
-      boolean isActive) {
+  public Trigger(String path, String id, int enabledHooks,
+      TriggerParameterConfiguration[] parameters, boolean isActive) {
     this.path = path;
     this.id = id;
+    this.enabledHooks = enabledHooks;
     this.parameters = parameters;
     this.active = isActive;
     onConfig(parameters);
@@ -70,6 +72,10 @@ public abstract class Trigger {
 
   public final String getId() {
     return id;
+  }
+
+  public final int getEnabledHooks() {
+    return enabledHooks;
   }
 
   public final TriggerParameterConfiguration[] getParameters() {

@@ -21,9 +21,9 @@ package org.apache.iotdb.db.trigger.define;
 
 public abstract class AsyncTrigger extends Trigger {
 
-  public AsyncTrigger(String path, String id, TriggerParameterConfiguration[] parameters,
-      boolean isActive) {
-    super(path, id, parameters, isActive);
+  public AsyncTrigger(String path, String id, int enabledHooks,
+      TriggerParameterConfiguration[] parameters, boolean isActive) {
+    super(path, id, enabledHooks, parameters, isActive);
   }
 
   @Override
