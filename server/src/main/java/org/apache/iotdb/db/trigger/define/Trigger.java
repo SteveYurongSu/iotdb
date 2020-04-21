@@ -52,15 +52,6 @@ public abstract class Trigger {
   public void onRemove() {
   }
 
-  public void onDataPointAfterInsert(final long timestamp, final Object value) {
-  }
-
-  public void onBatchAfterInsert(final long[] timestamps, final Object[] values) {
-  }
-
-  public void onDataPointAfterDelete(final long timestamp) {
-  }
-
   public final void markAsActive() {
     active = true;
   }

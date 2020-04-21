@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.trigger.define;
 
-public enum TriggerExecutionResult {
-
-  SKIP,
-  DATA_POINT_NOT_CHANGED,
-  DATA_POINT_CHANGED
+public enum AsyncTriggerRejectedPolicy {
+  DISCARD,
+  ENQUEUE
 }

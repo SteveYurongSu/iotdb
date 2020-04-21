@@ -31,12 +31,31 @@ public abstract class AsyncTrigger extends Trigger {
     return false;
   }
 
-  public void onDataPointBeforeInsert(final long timestamp, final Object value) {
+  public AsyncTriggerRejectedPolicy onDataPointBeforeInsert(final long timestamp,
+      final Object value) {
+    return AsyncTriggerRejectedPolicy.ENQUEUE;
   }
 
-  public void onBatchBeforeInsert(final long[] timestamps, final Object[] values) {
+  public AsyncTriggerRejectedPolicy onBatchBeforeInsert(final long[] timestamps,
+      final Object[] values) {
+    return AsyncTriggerRejectedPolicy.ENQUEUE;
   }
 
-  public void onDataPointBeforeDelete(final long timestamp) {
+  public AsyncTriggerRejectedPolicy onDataPointBeforeDelete(final long timestamp) {
+    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  }
+
+  public AsyncTriggerRejectedPolicy onDataPointAfterInsert(final long timestamp,
+      final Object value) {
+    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  }
+
+  public AsyncTriggerRejectedPolicy onBatchAfterInsert(final long[] timestamps,
+      final Object[] values) {
+    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  }
+
+  public AsyncTriggerRejectedPolicy onDataPointAfterDelete(final long timestamp) {
+    return AsyncTriggerRejectedPolicy.ENQUEUE;
   }
 }
