@@ -236,9 +236,9 @@ public class TriggerStorageUtil {
   private static boolean triggerWithTheSameIdOrSyncTypeHasAlreadyBeenRegistered(Trigger trigger,
       List<Element> elements) {
     for (Element e : elements) {
-      if ((e.attribute("id").getText().equals(trigger.getId())
-          || e.attribute("isSynced").getText().equals(trigger.isSynced() ? "true" : "false"))
-          && e.attribute("path").getText().equals(trigger.getPath())) {
+      if (e.attribute("id").getText().equals(trigger.getId())
+          || (e.attribute("isSynced").getText().equals(trigger.isSynced() ? "true" : "false")
+          && e.attribute("path").getText().equals(trigger.getPath()))) {
         return true;
       }
     }
@@ -247,8 +247,7 @@ public class TriggerStorageUtil {
 
   private static boolean doTriggerRemovalInElements(Trigger trigger, List<Element> elements) {
     for (Element e : elements) {
-      if (e.attribute("id").getText().equals(trigger.getId())
-          && e.attribute("path").getText().equals(trigger.getPath())) {
+      if (e.attribute("id").getText().equals(trigger.getId())) {
         e.getParent().remove(e);
         return true;
       }
