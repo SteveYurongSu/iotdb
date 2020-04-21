@@ -39,7 +39,7 @@ public enum HookID {
     this.id = id;
   }
 
-  public boolean isActive(int enableHooks) {
+  public boolean isEnabled(int enableHooks) {
     return 0 < (id & enableHooks);
   }
 }
