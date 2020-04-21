@@ -33,17 +33,26 @@ public abstract class SyncTrigger extends Trigger {
     return true;
   }
 
-  public TriggerExecutionResult onDataPointBeforeInsert(final long timestamp,
+  public SyncTriggerExecutionResult onDataPointBeforeInsert(final long timestamp,
       final DataPoint value) {
-    return TriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
   }
 
-  public TriggerExecutionResult onBatchBeforeInsert(final long[] timestamps,
+  public SyncTriggerExecutionResult onBatchBeforeInsert(final long[] timestamps,
       final Object[] values) {
-    return TriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
   }
 
-  public TriggerExecutionResult onDataPointBeforeDelete(final long timestamp) {
-    return TriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+  public SyncTriggerExecutionResult onDataPointBeforeDelete(final long timestamp) {
+    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+  }
+
+  public void onDataPointAfterInsert(final long timestamp, final Object value) {
+  }
+
+  public void onBatchAfterInsert(final long[] timestamps, final Object[] values) {
+  }
+
+  public void onDataPointAfterDelete(final long timestamp) {
   }
 }
