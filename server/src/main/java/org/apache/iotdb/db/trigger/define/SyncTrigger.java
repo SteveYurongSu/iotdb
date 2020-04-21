@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.trigger.define;
 
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 
 public abstract class SyncTrigger extends Trigger {
 
@@ -43,7 +44,7 @@ public abstract class SyncTrigger extends Trigger {
     return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
   }
 
-  public SyncTriggerExecutionResult onDataPointBeforeDelete(final long timestamp) {
+  public SyncTriggerExecutionResult onDataPointBeforeDelete(final LongDataPoint timestamp) {
     return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
   }
 
