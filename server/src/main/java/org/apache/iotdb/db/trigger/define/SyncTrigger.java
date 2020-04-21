@@ -23,9 +23,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
 public abstract class SyncTrigger extends Trigger {
 
-  public SyncTrigger(String path, String id, TriggerParameterConfiguration[] parameters,
-      boolean isActive) {
-    super(path, id, parameters, isActive);
+  public SyncTrigger(String path, String id, int enabledHooks,
+      TriggerParameterConfiguration[] parameters, boolean isActive) {
+    super(path, id, enabledHooks, parameters, isActive);
   }
 
   @Override
