@@ -81,22 +81,10 @@ public class TriggerStorageService implements IService {
     }
   }
 
-  public void stopTrigger(Trigger trigger) throws TriggerManagementException {
+  public void updateTrigger(Trigger trigger) throws TriggerManagementException {
     lock.lock();
     try {
       removeTriggerFromConfigurationFile(trigger);
-      trigger.markAsInactive();
-      registerTriggerToConfigurationFile(trigger);
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  public void startTrigger(Trigger trigger) throws TriggerManagementException {
-    lock.lock();
-    try {
-      removeTriggerFromConfigurationFile(trigger);
-      trigger.markAsActive();
       registerTriggerToConfigurationFile(trigger);
     } finally {
       lock.unlock();
