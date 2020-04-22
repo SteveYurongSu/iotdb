@@ -18,6 +18,37 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -37,6 +68,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
@@ -45,8 +77,32 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -54,10 +110,13 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.trigger.define.SyncTriggerExecutionResult;
+import org.apache.iotdb.db.trigger.manager.TriggerManager;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -74,16 +133,12 @@ import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import static org.apache.iotdb.db.conf.IoTDBConstant.*;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class PlanExecutor implements IPlanExecutor {
 
@@ -339,7 +394,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<String> getPathNextChildren(String path) throws MetadataException {
-     return MManager.getInstance().getChildNodePathInNextLevel(path);
+    return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
   private QueryDataSet processShowStorageGroup() {
@@ -411,7 +466,8 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private void updateRecord(RowRecord record, Map<String, String> tagAndAttribute, List<Path> paths) {
+  private void updateRecord(RowRecord record, Map<String, String> tagAndAttribute,
+      List<Path> paths) {
     for (int i = 6; i < paths.size(); i++) {
       updateRecord(record, tagAndAttribute.get(paths.get(i).getFullPath()));
     }
@@ -627,7 +683,7 @@ public class PlanExecutor implements IPlanExecutor {
           MeasurementSchema schema = knownSchemas.get(series);
           if (schema == null) {
             throw new MetadataException(String.format("Can not get the schema of measurement [%s]",
-                    chunkMetadata.getMeasurementUid()));
+                chunkMetadata.getMeasurementUid()));
           }
           if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
             mManager.createTimeseries(series.getFullPath(), schema.getType(),
@@ -696,12 +752,22 @@ public class PlanExecutor implements IPlanExecutor {
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupName(path.getFullPath());
+
+      LongDataPoint timestampDataPoint = (LongDataPoint) DataPoint
+          .getDataPoint(TSDataType.INT64, path.getMeasurement(), String.valueOf(timestamp));
+      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
+          .fireBeforeDelete(path, timestampDataPoint);
+      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
+        return;
+      } else if (executionResult.equals(SyncTriggerExecutionResult.DATA_POINT_CHANGED)) {
+        timestamp = Long.parseLong(timestampDataPoint.getValue().toString());
+      }
       StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
+      TriggerManager.getInstance().fireAfterDelete(path, timestamp);
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
   }
-
 
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessException {
@@ -711,6 +777,8 @@ public class PlanExecutor implements IPlanExecutor {
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       String[] strValues = insertPlan.getValues();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+      Path[] paths = new Path[measurementList.length];
+      TSDataType[] tsDataTypes = new TSDataType[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
         String measurement = measurementList[i];
@@ -718,15 +786,23 @@ public class PlanExecutor implements IPlanExecutor {
           if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           }
-          TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
-          Path path = new Path(deviceId, measurement);
-          internalCreateTimeseries(path.toString(), dataType);
+          tsDataTypes[i] = TypeInferenceUtils.getPredictedDataType(strValues[i]);
+          paths[i] = new Path(deviceId, measurement);
+          internalCreateTimeseries(paths[i].toString(), tsDataTypes[i]);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
       }
       insertPlan.setSchemas(schemas);
+
+      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
+          .fireBeforeInsert(paths, insertPlan.getTime(), tsDataTypes, strValues);
+      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
+        return;
+      }
       StorageEngine.getInstance().insert(insertPlan);
+      TriggerManager.getInstance()
+          .fireAfterInsert(paths, insertPlan.getTime(), tsDataTypes, strValues);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -779,20 +855,19 @@ public class PlanExecutor implements IPlanExecutor {
       String deviceId = batchInsertPlan.getDeviceId();
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
-      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+      Path[] paths = new Path[measurementList.length];
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
         // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
-          if (!conf.isAutoCreateSchemaEnabled()) {
+          if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
             throw new QueryProcessException(
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          Path path = new Path(deviceId, measurementList[i]);
-          TSDataType dataType = dataTypes[i];
-          internalCreateTimeseries(path.getFullPath(), dataType);
+          paths[i] = new Path(deviceId, measurementList[i]);
+          internalCreateTimeseries(paths[i].getFullPath(), dataTypes[i]);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
 
@@ -806,7 +881,18 @@ public class PlanExecutor implements IPlanExecutor {
         schemas[i] = measurementNode.getSchema();
       }
       batchInsertPlan.setSchemas(schemas);
-      return StorageEngine.getInstance().insertBatch(batchInsertPlan);
+
+      TSStatus[] tsStatuses = new TSStatus[batchInsertPlan.getRowCount()];
+      Arrays.fill(tsStatuses, RpcUtils.SUCCESS_STATUS);
+      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
+          .fireBeforeBatchInsert(paths, batchInsertPlan.getTimes(), batchInsertPlan.getColumns());
+      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
+        return tsStatuses;
+      }
+      tsStatuses = StorageEngine.getInstance().insertBatch(batchInsertPlan);
+      TriggerManager.getInstance()
+          .fireAfterBatchInsert(paths, batchInsertPlan.getTimes(), batchInsertPlan.getColumns());
+      return tsStatuses;
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -899,6 +985,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
+      deleteTriggersOfTimeSeries(deletePathList);
       Set<String> emptyStorageGroups = new HashSet<>();
       for (Path path : deletePathList) {
         emptyStorageGroups.addAll(mManager.deleteTimeseries(path.toString()));
@@ -906,7 +993,7 @@ public class PlanExecutor implements IPlanExecutor {
       for (String deleteStorageGroup : emptyStorageGroups) {
         StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
-    } catch (MetadataException e) {
+    } catch (MetadataException | TriggerManagementException e) {
       throw new QueryProcessException(e);
     }
     return true;
@@ -949,6 +1036,12 @@ public class PlanExecutor implements IPlanExecutor {
       deletePlan.addPath(p);
       deletePlan.setDeleteTime(Long.MAX_VALUE);
       processNonQuery(deletePlan);
+    }
+  }
+
+  private void deleteTriggersOfTimeSeries(List<Path> pathList) throws TriggerManagementException {
+    for (Path p : pathList) {
+      TriggerManager.getInstance().removeByPath(p.getFullPath());
     }
   }
 
