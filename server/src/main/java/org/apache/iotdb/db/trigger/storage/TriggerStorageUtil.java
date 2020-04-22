@@ -138,7 +138,9 @@ public class TriggerStorageUtil {
       Document document = reader.read(new File(TRIGGER_CONFIGURATION_FILENAME));
       Element root = document.getRootElement();
       if (triggerWithTheSameIdOrSyncTypeHasAlreadyBeenRegistered(trigger, root.elements())) {
-        return;
+        throw new TriggerManagementException(
+            String.format("Failed to register %s to file, because %s", trigger.toString(),
+                "a trigger with the same id or sync type has already been registered."));
       }
 
       Element element = root.addElement("trigger");

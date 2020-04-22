@@ -73,7 +73,7 @@ public class TriggerStorageService implements IService {
     lock.lock();
     try {
       Trigger trigger = createTriggerInstanceFromJar(className, path, id, enabledHooks,
-          parameterConfigurations, false);
+          parameterConfigurations, true);
       registerTriggerToConfigurationFile(trigger);
       return trigger;
     } finally {

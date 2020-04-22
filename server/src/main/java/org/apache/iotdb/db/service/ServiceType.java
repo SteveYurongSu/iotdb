@@ -42,7 +42,8 @@ public enum ServiceType {
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE("CACHE_HIT_RATIO_DISPLAY_SERVICE",
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
-  TRIGGER_STORAGE_SERVICE("Trigger Storage Service", ""),
+  TRIGGER_STORAGE_SERVICE("Trigger Storage ServerService", ""),
+  TRIGGER_MANAGER_SERVICE("Trigger Manager ServerService", ""),
   FLUSH_SERVICE("Flush ServerService",
       generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
   CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor");

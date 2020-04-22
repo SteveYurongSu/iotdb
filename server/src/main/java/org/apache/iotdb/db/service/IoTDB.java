@@ -35,6 +35,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
+import org.apache.iotdb.db.trigger.manager.TriggerManager;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
@@ -108,6 +109,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(StorageEngine.getInstance());
     // todo: isEnable
     registerManager.register(TriggerStorageService.getInstance());
+    registerManager.register(TriggerManager.getInstance());
 
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
