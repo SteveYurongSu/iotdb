@@ -42,16 +42,10 @@ public abstract class Trigger {
   public void onConfig(TriggerParameterConfiguration[] parameters) {
   }
 
-  public void onCreate() {
+  public void beforeStart() {
   }
 
-  public void onStart() {
-  }
-
-  public void onStop() {
-  }
-
-  public void onRemove() {
+  public void afterStop() {
   }
 
   public final void markAsActive() {

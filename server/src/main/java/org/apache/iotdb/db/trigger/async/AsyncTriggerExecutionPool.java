@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.define;
+package org.apache.iotdb.db.trigger.async;
 
-public enum AsyncTriggerRejectedPolicy {
-  
-  DISCARD,
-  ENQUEUE
+public class AsyncTriggerExecutionPool {
+
 }

@@ -31,31 +31,34 @@ public abstract class AsyncTrigger extends Trigger {
     return false;
   }
 
-  public AsyncTriggerRejectedPolicy onDataPointBeforeInsert(final long timestamp,
-      final Object value) {
-    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  public void onDataPointBeforeInsert(final long timestamp, final Object value) {
   }
 
-  public AsyncTriggerRejectedPolicy onBatchBeforeInsert(final long[] timestamps,
-      final Object[] values) {
-    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  public void onBatchBeforeInsert(final long[] timestamps, final Object[] values) {
   }
 
-  public AsyncTriggerRejectedPolicy onDataPointBeforeDelete(final long timestamp) {
-    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  public void onDataPointBeforeDelete(final long timestamp) {
   }
 
-  public AsyncTriggerRejectedPolicy onDataPointAfterInsert(final long timestamp,
-      final Object value) {
-    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  public void onDataPointAfterInsert(final long timestamp, final Object value) {
   }
 
-  public AsyncTriggerRejectedPolicy onBatchAfterInsert(final long[] timestamps,
-      final Object[] values) {
-    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  public void onBatchAfterInsert(final long[] timestamps, final Object[] values) {
   }
 
-  public AsyncTriggerRejectedPolicy onDataPointAfterDelete(final long timestamp) {
-    return AsyncTriggerRejectedPolicy.ENQUEUE;
+  public void onDataPointAfterDelete(final long timestamp) {
+  }
+
+  public AsyncTriggerRejectionPolicy getRejectionPolicy(HookID hook) {
+    switch (hook) {
+      case ON_DATA_POINT_BEFORE_INSERT:
+      case ON_DATA_POINT_BEFORE_DELETE:
+      case ON_DATA_POINT_AFTER_INSERT:
+      case ON_DATA_POINT_AFTER_DELETE:
+      case ON_BATCH_BEFORE_INSERT:
+      case ON_BATCH_AFTER_INSERT:
+      default:
+        return AsyncTriggerRejectionPolicy.ENQUEUE;
+    }
   }
 }

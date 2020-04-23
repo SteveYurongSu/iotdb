@@ -760,7 +760,7 @@ public class PlanExecutor implements IPlanExecutor {
       if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
         return;
       } else if (executionResult.equals(SyncTriggerExecutionResult.DATA_POINT_CHANGED)) {
-        timestamp = Long.parseLong(timestampDataPoint.getValue().toString());
+        timestamp = (Long) timestampDataPoint.getValue();
       }
       StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
       TriggerManager.getInstance().fireAfterDelete(path, timestamp);
