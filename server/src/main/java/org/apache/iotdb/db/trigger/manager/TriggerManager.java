@@ -39,6 +39,8 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.trigger.async.AsyncTriggerJob;
+import org.apache.iotdb.db.trigger.async.AsyncTriggerScheduler;
 import org.apache.iotdb.db.trigger.define.AsyncTrigger;
 import org.apache.iotdb.db.trigger.define.SyncTrigger;
 import org.apache.iotdb.db.trigger.define.SyncTriggerExecutionResult;
@@ -122,7 +124,11 @@ public class TriggerManager implements IService {
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;
       }
-      // todo: fire
+      Object value = DataPoint
+          .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]).getValue();
+      AsyncTriggerScheduler.getInstance().submit(
+          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_BEFORE_INSERT, timestamp, value, null,
+              null));
     }
 
     return result;
@@ -149,7 +155,11 @@ public class TriggerManager implements IService {
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;
       }
-      // todo: fire
+      Object value = DataPoint
+          .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]).getValue();
+      AsyncTriggerScheduler.getInstance().submit(
+          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_AFTER_INSERT, timestamp, value, null,
+              null));
     }
   }
 
@@ -162,7 +172,14 @@ public class TriggerManager implements IService {
       result = syncTrigger.onDataPointBeforeDelete(timestamp);
     }
 
-    // todo: fire
+    // fire async trigger
+    AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path.getFullPath());
+    if (asyncTrigger != null && asyncTrigger.isActive() && ON_DATA_POINT_BEFORE_DELETE
+        .isEnabled(asyncTrigger.getEnabledHooks())) {
+      AsyncTriggerScheduler.getInstance().submit(
+          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_BEFORE_DELETE,
+              (Long) timestamp.getValue(), null, null, null));
+    }
 
     return result;
   }
@@ -175,7 +192,13 @@ public class TriggerManager implements IService {
       syncTrigger.onDataPointAfterDelete(timestamp);
     }
 
-    // todo: fire
+    AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path.getFullPath());
+    if (asyncTrigger != null && asyncTrigger.isActive() && ON_DATA_POINT_AFTER_DELETE
+        .isEnabled(asyncTrigger.getEnabledHooks())) {
+      AsyncTriggerScheduler.getInstance().submit(
+          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_AFTER_DELETE, timestamp, null, null,
+              null));
+    }
   }
 
   //! times should be sorted.
@@ -206,7 +229,9 @@ public class TriggerManager implements IService {
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;
       }
-      // todo: fire
+      AsyncTriggerScheduler.getInstance().submit(
+          new AsyncTriggerJob(asyncTrigger, ON_BATCH_BEFORE_INSERT, -1, null, timestamps,
+              (Object[]) values[i]));
     }
 
     return result;
@@ -231,7 +256,9 @@ public class TriggerManager implements IService {
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;
       }
-      // todo: fire
+      AsyncTriggerScheduler.getInstance().submit(
+          new AsyncTriggerJob(asyncTrigger, ON_BATCH_AFTER_INSERT, -1, null, timestamps,
+              (Object[]) values[i]));
     }
   }
 
@@ -241,14 +268,13 @@ public class TriggerManager implements IService {
     checkPath(path);
     Trigger trigger = TriggerStorageService.getInstance()
         .createTrigger(className, path, id, enabledHooks, parameterConfigurations);
-    trigger.onCreate();
+    trigger.beforeStart();
     idToTriggers.put(trigger.getId(), trigger);
     if (trigger.isSynced()) {
       pathToSyncTriggers.put(trigger.getPath(), trigger);
     } else {
       pathToAsyncTriggers.put(trigger.getPath(), trigger);
     }
-    trigger.onStart();
   }
 
   public void start(String id) throws TriggerManagementException {
@@ -261,9 +287,9 @@ public class TriggerManager implements IService {
       throw new TriggerManagementException(String
           .format("Trigger(ID: %s) has already been started.", id));
     }
-    TriggerStorageService.getInstance().updateTrigger(trigger);
+    trigger.beforeStart();
     trigger.markAsActive();
-    trigger.onStart();
+    TriggerStorageService.getInstance().updateTrigger(trigger);
   }
 
   public void stop(String id) throws TriggerManagementException {
@@ -276,9 +302,9 @@ public class TriggerManager implements IService {
       throw new TriggerManagementException(String
           .format("Trigger(ID: %s) has already been stopped.", id));
     }
-    TriggerStorageService.getInstance().updateTrigger(trigger);
     trigger.markAsInactive();
-    trigger.onStop();
+    TriggerStorageService.getInstance().updateTrigger(trigger);
+    trigger.afterStop();
   }
 
   public void removeById(String id) throws TriggerManagementException {
@@ -289,7 +315,7 @@ public class TriggerManager implements IService {
     }
     if (trigger.isActive()) {
       trigger.markAsInactive();
-      trigger.onStop();
+      trigger.afterStop();
     }
     TriggerStorageService.getInstance().removeTrigger(trigger);
     idToTriggers.remove(id);
@@ -298,7 +324,6 @@ public class TriggerManager implements IService {
     } else {
       pathToAsyncTriggers.remove(trigger.getPath());
     }
-    trigger.onRemove();
   }
 
   public void removeByPath(String path) throws TriggerManagementException {
@@ -316,26 +341,25 @@ public class TriggerManager implements IService {
     }
     if (trigger.isActive()) {
       trigger.markAsInactive();
-      trigger.onStop();
+      trigger.afterStop();
     }
     TriggerStorageService.getInstance().removeTrigger(trigger);
     idToTriggers.remove(trigger.getId());
     map.remove(trigger.getPath());
-    trigger.onRemove();
     logger.info("{} trigger(path: {}) has been removed successfully.",
         map == pathToSyncTriggers ? "Sync" : "Async", path);
   }
 
   private void initMapsAndStartTriggers(List<Trigger> triggers) {
     for (Trigger trigger : triggers) {
+      if (trigger.isActive()) {
+        trigger.beforeStart();
+      }
       idToTriggers.put(trigger.getId(), trigger);
       if (trigger.isSynced()) {
         pathToSyncTriggers.put(trigger.getPath(), trigger);
       } else {
         pathToAsyncTriggers.put(trigger.getPath(), trigger);
-      }
-      if (trigger.isActive()) {
-        trigger.onStart();
       }
     }
   }
@@ -343,7 +367,7 @@ public class TriggerManager implements IService {
   private void stopTriggers() {
     for (Trigger trigger : idToTriggers.values()) {
       if (trigger.isActive()) {
-        trigger.onStop();
+        trigger.afterStop();
       }
     }
   }
