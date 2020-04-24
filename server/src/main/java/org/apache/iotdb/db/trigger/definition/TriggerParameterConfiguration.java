@@ -17,10 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.define;
+package org.apache.iotdb.db.trigger.definition;
 
-public enum AsyncTriggerRejectionPolicy {
-  
-  DISCARD,
-  ENQUEUE
+public class TriggerParameterConfiguration {
+
+  private final String name;
+  private final String value;
+
+  public TriggerParameterConfiguration(String name, String value) {
+    this.name = name;
+    this.value = value;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  @Override
+  public String toString() {
+    return "TriggerParameterConfiguration<" + getName() + ", " + getValue() + ">";
+  }
 }

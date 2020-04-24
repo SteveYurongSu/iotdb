@@ -34,8 +34,8 @@ import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.trigger.define.Trigger;
-import org.apache.iotdb.db.trigger.define.TriggerParameterConfiguration;
+import org.apache.iotdb.db.trigger.definition.Trigger;
+import org.apache.iotdb.db.trigger.definition.TriggerParameterConfiguration;
 
 // todo: undo / redo ?
 public class TriggerStorageService implements IService {

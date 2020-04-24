@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.trigger.async;
 
-import org.apache.iotdb.db.trigger.define.AsyncTrigger;
-import org.apache.iotdb.db.trigger.define.HookID;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
+import org.apache.iotdb.db.trigger.definition.HookID;
 
 public class AsyncTriggerTask {
 

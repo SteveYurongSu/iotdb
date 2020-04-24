@@ -27,8 +27,8 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.trigger.define.AsyncTrigger;
-import org.apache.iotdb.db.trigger.define.Trigger;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
+import org.apache.iotdb.db.trigger.definition.Trigger;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +81,7 @@ public class AsyncTriggerScheduler implements IService {
     // todo
     stopTransferThread();
     // pool.stop();
-    idToExecutionQueue.values().forEach(AsyncTriggerExecutionQueue::stop);
+    idToExecutionQueue.values().forEach(AsyncTriggerExecutionQueue::afterTriggerStop);
   }
 
   @Override
@@ -89,13 +89,12 @@ public class AsyncTriggerScheduler implements IService {
     return ServiceType.TRIGGER_ASYNC_SCHEDULER_SERVICE;
   }
 
-  public void beforeStart(AsyncTrigger trigger) throws TriggerInstanceLoadException {
+  public void beforeTriggerStart(AsyncTrigger trigger) throws TriggerInstanceLoadException {
     idToExecutionQueue.put(trigger.getId(), new AsyncTriggerExecutionQueue(trigger));
   }
 
-  public void afterStop(AsyncTrigger trigger) {
-    AsyncTriggerExecutionQueue executionQueue = idToExecutionQueue.remove(trigger.getId());
-    executionQueue.stop();
+  public void afterTriggerStop(AsyncTrigger trigger) {
+    idToExecutionQueue.remove(trigger.getId()).afterTriggerStop();
   }
 
   public void submit(AsyncTriggerTask task) {
