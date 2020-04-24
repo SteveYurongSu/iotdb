@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.define;
+package org.apache.iotdb.db.trigger.definition;
 
 public abstract class Trigger {
 

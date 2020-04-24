@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.trigger.async;
 
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
-import org.apache.iotdb.db.trigger.define.AsyncTrigger;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageUtil;
 
 public class AsyncTriggerExecutor {
@@ -35,24 +35,24 @@ public class AsyncTriggerExecutor {
 
   public void execute() {
     switch (task.getHookID()) {
-      case ON_DATA_POINT_BEFORE_INSERT:
-        handler.onDataPointBeforeInsert(task.getTimestamp(), task.getValue());
-      case ON_DATA_POINT_AFTER_INSERT:
-        handler.onDataPointAfterInsert(task.getTimestamp(), task.getValue());
-      case ON_BATCH_BEFORE_INSERT:
-        handler.onBatchBeforeInsert(task.getTimestamps(), task.getValues());
-      case ON_BATCH_AFTER_INSERT:
-        handler.onBatchAfterInsert(task.getTimestamps(), task.getValues());
-      case ON_DATA_POINT_BEFORE_DELETE:
-        handler.onDataPointBeforeDelete(task.getTimestamp());
-      case ON_DATA_POINT_AFTER_DELETE:
-        handler.onDataPointAfterDelete(task.getTimestamp());
+      case BEFORE_INSERT:
+        handler.beforeInsert(task.getTimestamp(), task.getValue());
+      case AFTER_INSERT:
+        handler.afterInsert(task.getTimestamp(), task.getValue());
+      case BEFORE_BATCH_INSERT:
+        handler.beforeBatchInsert(task.getTimestamps(), task.getValues());
+      case AFTER_BATCH_INSERT:
+        handler.afterBatchInsert(task.getTimestamps(), task.getValues());
+      case BEFORE_DELETE:
+        handler.beforeDelete(task.getTimestamp());
+      case AFTER_DELETE:
+        handler.afterDelete(task.getTimestamp());
       default:
         throw new UnsupportedOperationException("Unsupported async trigger task.");
     }
   }
 
-  public void afterStop() {
+  public void afterTriggerStop() {
     handler.afterStop();
   }
 

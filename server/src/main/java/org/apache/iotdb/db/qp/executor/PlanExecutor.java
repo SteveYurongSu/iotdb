@@ -121,7 +121,7 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
-import org.apache.iotdb.db.trigger.define.SyncTriggerExecutionResult;
+import org.apache.iotdb.db.trigger.definition.SyncTriggerExecutionResult;
 import org.apache.iotdb.db.trigger.manager.TriggerManager;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;

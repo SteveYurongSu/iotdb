@@ -17,28 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.define;
+package org.apache.iotdb.db.trigger.definition;
 
-public class TriggerParameterConfiguration {
+public enum HookID {
 
-  private final String name;
-  private final String value;
+  BEFORE_INSERT      (0B00000001),
+  BEFORE_DELETE      (0B00000010),
+  BEFORE_UPDATE      (0B00000100),
+  BEFORE_BATCH_INSERT(0B00001000),
 
-  public TriggerParameterConfiguration(String name, String value) {
-    this.name = name;
-    this.value = value;
+  AFTER_INSERT       (0B00010000),
+  AFTER_DELETE       (0B00100000),
+  AFTER_UPDATE       (0B01000000),
+  AFTER_BATCH_INSERT (0B10000000),
+  ;
+
+  private final int id;
+
+  HookID(int id) {
+    this.id = id;
   }
 
-  public String getName() {
-    return name;
-  }
-
-  public String getValue() {
-    return value;
-  }
-
-  @Override
-  public String toString() {
-    return "TriggerParameterConfiguration<" + getName() + ", " + getValue() + ">";
+  public boolean isEnabled(int enableHooks) {
+    return 0 < (id & enableHooks);
   }
 }

@@ -17,29 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.define;
+package org.apache.iotdb.db.trigger.definition;
 
-public enum HookID {
-
-  ON_DATA_POINT_BEFORE_INSERT(0B00000001),
-  ON_DATA_POINT_BEFORE_DELETE(0B00000010),
-  ON_DATA_POINT_BEFORE_UPDATE(0B00000100),
-
-  ON_DATA_POINT_AFTER_INSERT (0B00001000),
-  ON_DATA_POINT_AFTER_DELETE (0B00010000),
-  ON_DATA_POINT_AFTER_UPDATE (0B00100000),
-
-  ON_BATCH_BEFORE_INSERT     (0B00010000),
-  ON_BATCH_AFTER_INSERT      (0B00100000),
-  ;
-
-  private final int id;
-
-  HookID(int id) {
-    this.id = id;
-  }
-
-  public boolean isEnabled(int enableHooks) {
-    return 0 < (id & enableHooks);
-  }
+public enum AsyncTriggerRejectionPolicy {
+  
+  DISCARD,
+  ENQUEUE
 }

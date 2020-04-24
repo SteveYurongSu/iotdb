@@ -17,48 +17,42 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.define;
+package org.apache.iotdb.db.trigger.definition;
 
-public abstract class AsyncTrigger extends Trigger {
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 
-  public AsyncTrigger(String path, String id, int enabledHooks,
+public abstract class SyncTrigger extends Trigger {
+
+  public SyncTrigger(String path, String id, int enabledHooks,
       TriggerParameterConfiguration[] parameters, boolean isActive) {
     super(path, id, enabledHooks, parameters, isActive);
   }
 
   @Override
   public final boolean isSynced() {
-    return false;
+    return true;
   }
 
-  public void onDataPointBeforeInsert(final long timestamp, final Object value) {
+  public SyncTriggerExecutionResult beforeInsert(final long timestamp, final DataPoint value) {
+    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
   }
 
-  public void onBatchBeforeInsert(final long[] timestamps, final Object[] values) {
+  public void afterInsert(final long timestamp, final Object value) {
   }
 
-  public void onDataPointBeforeDelete(final long timestamp) {
+  public SyncTriggerExecutionResult beforeBatchInsert(final long[] timestamps,
+      final Object[] values) {
+    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
   }
 
-  public void onDataPointAfterInsert(final long timestamp, final Object value) {
+  public void afterBatchInsert(final long[] timestamps, final Object[] values) {
   }
 
-  public void onBatchAfterInsert(final long[] timestamps, final Object[] values) {
+  public SyncTriggerExecutionResult beforeDelete(final LongDataPoint timestamp) {
+    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
   }
 
-  public void onDataPointAfterDelete(final long timestamp) {
-  }
-
-  public AsyncTriggerRejectionPolicy getRejectionPolicy(HookID hook) {
-    switch (hook) {
-      case ON_DATA_POINT_BEFORE_INSERT:
-      case ON_DATA_POINT_BEFORE_DELETE:
-      case ON_DATA_POINT_AFTER_INSERT:
-      case ON_DATA_POINT_AFTER_DELETE:
-      case ON_BATCH_BEFORE_INSERT:
-      case ON_BATCH_AFTER_INSERT:
-      default:
-        return AsyncTriggerRejectionPolicy.ENQUEUE;
-    }
+  public void afterDelete(final long timestamp) {
   }
 }

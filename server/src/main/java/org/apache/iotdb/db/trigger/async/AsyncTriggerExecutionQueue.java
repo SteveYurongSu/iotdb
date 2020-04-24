@@ -22,8 +22,8 @@ package org.apache.iotdb.db.trigger.async;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
-import org.apache.iotdb.db.trigger.define.AsyncTrigger;
-import org.apache.iotdb.db.trigger.define.AsyncTriggerRejectionPolicy;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
+import org.apache.iotdb.db.trigger.definition.AsyncTriggerRejectionPolicy;
 
 public class AsyncTriggerExecutionQueue extends WrappedRunnable {
 
@@ -80,14 +80,14 @@ public class AsyncTriggerExecutionQueue extends WrappedRunnable {
     }
   }
 
-  public void stop() {
+  public void afterTriggerStop() {
     while (hasQueuedTasks()) {
       tasks.poll();
     }
     while (!allExecutorsAreIdle()) {
       ;
     }
-    executors.forEach(AsyncTriggerExecutor::afterStop);
+    executors.forEach(AsyncTriggerExecutor::afterTriggerStop);
   }
 
   public boolean hasQueuedTasks() {
