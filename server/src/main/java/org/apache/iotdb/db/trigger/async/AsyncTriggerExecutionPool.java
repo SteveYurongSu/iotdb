@@ -21,4 +21,11 @@ package org.apache.iotdb.db.trigger.async;
 
 public class AsyncTriggerExecutionPool {
 
+  public AsyncTriggerExecutionPool() {
+
+  }
+
+  public void submit(AsyncTriggerExecutionQueue executionQueue) {
+
+  }
 }

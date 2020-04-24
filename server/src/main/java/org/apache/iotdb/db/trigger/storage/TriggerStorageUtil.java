@@ -208,6 +208,12 @@ public class TriggerStorageUtil {
     }
   }
 
+  public static Trigger createTriggerInstanceFromJar(Trigger trigger)
+      throws TriggerInstanceLoadException {
+    return createTriggerInstanceFromJar(trigger.getClass().getName(), trigger.getPath(),
+        trigger.getId(), trigger.getEnabledHooks(), trigger.getParameters(), trigger.isActive());
+  }
+
   public static Trigger createTriggerInstanceFromJar(String className, String path,
       String id, int enabledHooks, TriggerParameterConfiguration[] parameterConfigurations,
       boolean isActive) throws TriggerInstanceLoadException {
