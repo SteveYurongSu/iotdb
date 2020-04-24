@@ -272,7 +272,7 @@ public class TriggerManager implements IService {
     }
   }
 
-  public void start(String id) throws TriggerManagementException {
+  public void start(String id) throws TriggerManagementException, TriggerInstanceLoadException {
     Trigger trigger = idToTriggers.get(id);
     if (trigger == null) {
       throw new TriggerManagementException(String
@@ -283,6 +283,9 @@ public class TriggerManager implements IService {
           .format("Trigger(ID: %s) has already been started.", id));
     }
     trigger.beforeStart();
+    if (!trigger.isSynced()) {
+      AsyncTriggerScheduler.getInstance().beforeTriggerStart((AsyncTrigger) trigger);
+    }
     trigger.markAsActive();
     TriggerStorageService.getInstance().updateTrigger(trigger);
   }
@@ -299,6 +302,9 @@ public class TriggerManager implements IService {
     }
     trigger.markAsInactive();
     TriggerStorageService.getInstance().updateTrigger(trigger);
+    if (!trigger.isSynced()) {
+      AsyncTriggerScheduler.getInstance().afterTriggerStop((AsyncTrigger) trigger);
+    }
     trigger.afterStop();
   }
 
