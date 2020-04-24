@@ -50,7 +50,7 @@ public class TriggerStorageService implements IService {
   public void start() throws StartupException {
     if (!(makeTriggerStorageDirectoriesIfNecessary()
         && makeTriggerConfigurationFileIfNecessary())) {
-      throw new StartupException("Could not create trigger storage files.");
+      throw new StartupException(getID().getName(), "Could not create trigger storage files.");
     }
   }
 

@@ -20,54 +20,85 @@
 package org.apache.iotdb.db.trigger.async;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.trigger.define.AsyncTrigger;
 import org.apache.iotdb.db.trigger.define.AsyncTriggerRejectionPolicy;
 
-public class AsyncTriggerExecutorQueue {
+public class AsyncTriggerExecutionQueue extends WrappedRunnable {
 
   private final static int MAX_ASYNC_TRIGGER_EXECUTOR = 10;
 
   private final AsyncTrigger trigger;
   private final ConcurrentLinkedQueue<AsyncTriggerExecutor> executors;
-  private final ConcurrentLinkedQueue<AsyncTriggerJob> jobs;
-  private final Object pollLock;
+  private final ConcurrentLinkedQueue<AsyncTriggerTask> tasks;
 
-  public AsyncTriggerExecutorQueue(AsyncTrigger trigger) throws TriggerInstanceLoadException {
+  public AsyncTriggerExecutionQueue(AsyncTrigger trigger) throws TriggerInstanceLoadException {
     this.trigger = trigger;
     executors = new ConcurrentLinkedQueue<>();
     for (int i = 0; i < MAX_ASYNC_TRIGGER_EXECUTOR; ++i) {
-      executors.add(AsyncTriggerExecutor.createExecutor(trigger));
+      executors.add(new AsyncTriggerExecutor(trigger));
     }
-    jobs = new ConcurrentLinkedQueue<>();
-    pollLock = new Object();
+    tasks = new ConcurrentLinkedQueue<>();
   }
 
-  public boolean enqueueJob(AsyncTriggerJob job) throws TriggerInstanceLoadException {
-    if (executors.size() == 0 && trigger.getRejectionPolicy(job.getHookID())
+  public boolean submit(AsyncTriggerTask task) {
+    if (executors.isEmpty() && trigger.getRejectionPolicy(task.getHookID())
         .equals(AsyncTriggerRejectionPolicy.DISCARD)) {
       return false;
     }
-    jobs.add(job);
+    tasks.add(task);
     return true;
   }
 
-  public AsyncTriggerExecutor pollExecutor() {
-    synchronized (pollLock) {
-      if (executors.size() == 0 || jobs.size() == 0) {
-        return null;
-      }
-      AsyncTriggerExecutor executor = executors.poll();
-      executor.setJob(jobs.poll());
-      return executor;
+  public synchronized AsyncTriggerExecutor pollExecutor() {
+    if (executors.isEmpty() || tasks.isEmpty()) {
+      return null;
     }
+    AsyncTriggerExecutor executor = executors.poll();
+    executor.setTask(tasks.poll());
+    return executor;
   }
 
   public void releaseExecutor(AsyncTriggerExecutor executor) {
     executors.add(executor);
   }
 
-  public int getQueuedJobSize() {
-    return jobs.size();
+  /**
+   * enter the method only when hasQueuedTasks() && !allExecutorsAreBusy()
+   */
+  @Override
+  public void runMayThrow() throws Exception {
+    AsyncTriggerExecutor executor = pollExecutor();
+    if (executor == null) {
+      return;
+    }
+    try {
+      executor.execute();
+    } finally {
+      releaseExecutor(executor);
+    }
+  }
+
+  public void stop() {
+    while (hasQueuedTasks()) {
+      tasks.poll();
+    }
+    while (!allExecutorsAreIdle()) {
+      ;
+    }
+    executors.forEach(AsyncTriggerExecutor::afterStop);
+  }
+
+  public boolean hasQueuedTasks() {
+    return !tasks.isEmpty();
+  }
+
+  public boolean allExecutorsAreBusy() {
+    return executors.isEmpty();
+  }
+
+  private boolean allExecutorsAreIdle() {
+    return executors.size() == MAX_ASYNC_TRIGGER_EXECUTOR;
   }
 }

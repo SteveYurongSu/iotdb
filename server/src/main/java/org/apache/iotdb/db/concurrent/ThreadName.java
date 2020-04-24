@@ -42,7 +42,8 @@ public enum ThreadName {
   SYNC_MONITOR("Sync-Monitor"),
   LOAD_TSFILE("Load TsFile"),
   TIME_COST_STATSTIC("TIME_COST_STATSTIC"),
-  QUERY_SERVICE("Query-ServerServiceImpl");
+  QUERY_SERVICE("Query-ServerServiceImpl"),
+  TRIGGER_SCHEDULER_TRANSFER("IoTDB-TriggerSchedulerTransfer-Thread");
 
   private String name;
 

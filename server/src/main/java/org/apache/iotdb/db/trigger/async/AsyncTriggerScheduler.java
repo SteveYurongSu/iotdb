@@ -19,6 +19,139 @@
 
 package org.apache.iotdb.db.trigger.async;
 
-public class AsyncTriggerScheduler {
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.trigger.define.AsyncTrigger;
+import org.apache.iotdb.db.trigger.define.Trigger;
+import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+public class AsyncTriggerScheduler implements IService {
+
+  private static final Logger logger = LoggerFactory.getLogger(AsyncTriggerScheduler.class);
+
+  private final ConcurrentHashMap<String, AsyncTriggerExecutionQueue> idToExecutionQueue;
+  private LinkedBlockingQueue<AsyncTriggerExecutionQueue> waitingQueue;
+  private AsyncTriggerExecutionPool pool;
+
+  private Thread transferThread;
+  private final Runnable transferTask = () -> {
+    while (!Thread.currentThread().isInterrupted()) {
+      try {
+        AsyncTriggerExecutionQueue executionQueue = waitingQueue.take();
+        if (!executionQueue.hasQueuedTasks()) {
+          continue;
+        }
+        if (executionQueue.allExecutorsAreBusy()) {
+          waitingQueue.offer(executionQueue);
+          continue;
+        }
+        pool.submit(executionQueue);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    logger.info("AsyncTriggerScheduler transferThread exits.");
+  };
+
+  private AsyncTriggerScheduler() {
+    idToExecutionQueue = new ConcurrentHashMap<>();
+    waitingQueue = new LinkedBlockingQueue<>();
+  }
+
+  @Override
+  public void start() throws StartupException {
+    try {
+      init();
+      startTransferThread();
+    } catch (TriggerInstanceLoadException e) {
+      throw new StartupException(getID().getName(), e.getMessage());
+    }
+  }
+
+  @Override
+  public void stop() {
+    // todo
+    stopTransferThread();
+    // pool.stop();
+    idToExecutionQueue.values().forEach(AsyncTriggerExecutionQueue::stop);
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.TRIGGER_ASYNC_SCHEDULER_SERVICE;
+  }
+
+  public void beforeStart(AsyncTrigger trigger) throws TriggerInstanceLoadException {
+    idToExecutionQueue.put(trigger.getId(), new AsyncTriggerExecutionQueue(trigger));
+  }
+
+  public void afterStop(AsyncTrigger trigger) {
+    AsyncTriggerExecutionQueue executionQueue = idToExecutionQueue.remove(trigger.getId());
+    executionQueue.stop();
+  }
+
+  public void submit(AsyncTriggerTask task) {
+    AsyncTriggerExecutionQueue executionQueue = idToExecutionQueue.get(task.getTrigger().getId());
+    if (executionQueue == null) {
+      return;
+    }
+    executionQueue.submit(task);
+    waitingQueue.offer(executionQueue);
+  }
+
+  private void init() throws TriggerInstanceLoadException {
+    List<Trigger> triggers = TriggerStorageService.getInstance().recoveryAllTriggers();
+    for (Trigger trigger : triggers) {
+      if (!trigger.isSynced()) {
+        idToExecutionQueue
+            .put(trigger.getId(), new AsyncTriggerExecutionQueue((AsyncTrigger) trigger));
+      }
+    }
+  }
+
+  private boolean transferThreadIsActivated() {
+    return transferThread != null && transferThread.isAlive();
+  }
+
+  private void startTransferThread() {
+    if (!transferThreadIsActivated()) {
+      transferThread = new Thread(transferTask, ThreadName.TRIGGER_SCHEDULER_TRANSFER.getName());
+      transferThread.start();
+      logger.info("AsyncTriggerScheduler transferThread started.");
+    } else {
+      logger.warn("AsyncTriggerScheduler transferThread has already started.");
+    }
+  }
+
+  private void stopTransferThread() {
+    if (!transferThreadIsActivated()) {
+      logger.warn("AsyncTriggerScheduler transferThread has not started yet.");
+      return;
+    }
+    transferThread.interrupt();
+    while (transferThread.isAlive()) {
+      ;
+    }
+    logger.info("AsyncTriggerScheduler transferThread was interrupted.");
+  }
+
+  public static AsyncTriggerScheduler getInstance() {
+    return InstanceHolder.INSTANCE;
+  }
+
+  private static class InstanceHolder {
+
+    private static final AsyncTriggerScheduler INSTANCE = new AsyncTriggerScheduler();
+
+    private InstanceHolder() {
+    }
+  }
 }

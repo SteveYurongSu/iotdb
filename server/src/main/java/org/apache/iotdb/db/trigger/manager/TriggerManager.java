@@ -39,7 +39,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.trigger.async.AsyncTriggerJob;
+import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 import org.apache.iotdb.db.trigger.async.AsyncTriggerScheduler;
 import org.apache.iotdb.db.trigger.define.AsyncTrigger;
 import org.apache.iotdb.db.trigger.define.SyncTrigger;
@@ -75,8 +75,7 @@ public class TriggerManager implements IService {
       initMapsAndStartTriggers(TriggerStorageService.getInstance().recoveryAllTriggers());
       logger.info("TriggerManager service started.");
     } catch (TriggerException e) {
-      throw new StartupException(String.format("Failed to start TriggerManager service, because %s",
-          e.getMessage()));
+      throw new StartupException(getID().getName(), e.getMessage());
     }
   }
 
@@ -127,7 +126,7 @@ public class TriggerManager implements IService {
       Object value = DataPoint
           .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]).getValue();
       AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_BEFORE_INSERT, timestamp, value, null,
+          new AsyncTriggerTask(asyncTrigger, ON_DATA_POINT_BEFORE_INSERT, timestamp, value, null,
               null));
     }
 
@@ -158,7 +157,7 @@ public class TriggerManager implements IService {
       Object value = DataPoint
           .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]).getValue();
       AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_AFTER_INSERT, timestamp, value, null,
+          new AsyncTriggerTask(asyncTrigger, ON_DATA_POINT_AFTER_INSERT, timestamp, value, null,
               null));
     }
   }
@@ -177,7 +176,7 @@ public class TriggerManager implements IService {
     if (asyncTrigger != null && asyncTrigger.isActive() && ON_DATA_POINT_BEFORE_DELETE
         .isEnabled(asyncTrigger.getEnabledHooks())) {
       AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_BEFORE_DELETE,
+          new AsyncTriggerTask(asyncTrigger, ON_DATA_POINT_BEFORE_DELETE,
               (Long) timestamp.getValue(), null, null, null));
     }
 
@@ -196,7 +195,7 @@ public class TriggerManager implements IService {
     if (asyncTrigger != null && asyncTrigger.isActive() && ON_DATA_POINT_AFTER_DELETE
         .isEnabled(asyncTrigger.getEnabledHooks())) {
       AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerJob(asyncTrigger, ON_DATA_POINT_AFTER_DELETE, timestamp, null, null,
+          new AsyncTriggerTask(asyncTrigger, ON_DATA_POINT_AFTER_DELETE, timestamp, null, null,
               null));
     }
   }
@@ -230,7 +229,7 @@ public class TriggerManager implements IService {
         continue;
       }
       AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerJob(asyncTrigger, ON_BATCH_BEFORE_INSERT, -1, null, timestamps,
+          new AsyncTriggerTask(asyncTrigger, ON_BATCH_BEFORE_INSERT, -1, null, timestamps,
               (Object[]) values[i]));
     }
 
@@ -257,7 +256,7 @@ public class TriggerManager implements IService {
         continue;
       }
       AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerJob(asyncTrigger, ON_BATCH_AFTER_INSERT, -1, null, timestamps,
+          new AsyncTriggerTask(asyncTrigger, ON_BATCH_AFTER_INSERT, -1, null, timestamps,
               (Object[]) values[i]));
     }
   }

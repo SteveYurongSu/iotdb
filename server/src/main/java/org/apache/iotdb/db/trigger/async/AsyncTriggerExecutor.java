@@ -19,47 +19,44 @@
 
 package org.apache.iotdb.db.trigger.async;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.trigger.define.AsyncTrigger;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageUtil;
 
-public class AsyncTriggerWrapper extends WrappedRunnable {
+public class AsyncTriggerExecutor {
 
   private final AsyncTrigger handler;
-  private AsyncTriggerJob job;
+  private AsyncTriggerTask task;
 
-  public AsyncTriggerWrapper(AsyncTrigger trigger) {
-    this.handler = trigger;
+  public AsyncTriggerExecutor(AsyncTrigger trigger) throws TriggerInstanceLoadException {
+    handler = (AsyncTrigger) TriggerStorageUtil.createTriggerInstanceFromJar(trigger);
+    handler.beforeStart();
   }
 
-  public static AsyncTriggerWrapper createHandler(AsyncTrigger trigger)
-      throws TriggerInstanceLoadException {
-    return new AsyncTriggerWrapper(
-        (AsyncTrigger) TriggerStorageUtil.createTriggerInstanceFromJar(trigger));
-  }
-
-  @Override
-  public void runMayThrow() throws Exception {
-    switch (job.getHookID()) {
+  public void execute() {
+    switch (task.getHookID()) {
       case ON_DATA_POINT_BEFORE_INSERT:
-        handler.onDataPointBeforeInsert(job.getTimestamp(), job.getValue());
+        handler.onDataPointBeforeInsert(task.getTimestamp(), task.getValue());
       case ON_DATA_POINT_AFTER_INSERT:
-        handler.onDataPointAfterInsert(job.getTimestamp(), job.getValue());
+        handler.onDataPointAfterInsert(task.getTimestamp(), task.getValue());
       case ON_BATCH_BEFORE_INSERT:
-        handler.onBatchBeforeInsert(job.getTimestamps(), job.getValues());
+        handler.onBatchBeforeInsert(task.getTimestamps(), task.getValues());
       case ON_BATCH_AFTER_INSERT:
-        handler.onBatchAfterInsert(job.getTimestamps(), job.getValues());
+        handler.onBatchAfterInsert(task.getTimestamps(), task.getValues());
       case ON_DATA_POINT_BEFORE_DELETE:
-        handler.onDataPointBeforeDelete(job.getTimestamp());
+        handler.onDataPointBeforeDelete(task.getTimestamp());
       case ON_DATA_POINT_AFTER_DELETE:
-        handler.onDataPointAfterDelete(job.getTimestamp());
+        handler.onDataPointAfterDelete(task.getTimestamp());
       default:
-        throw new UnsupportedOperationException("Unsupported async trigger job.");
+        throw new UnsupportedOperationException("Unsupported async trigger task.");
     }
   }
 
-  public void setJob(AsyncTriggerJob job) {
-    this.job = job;
+  public void afterStop() {
+    handler.afterStop();
+  }
+
+  public void setTask(AsyncTriggerTask task) {
+    this.task = task;
   }
 }
