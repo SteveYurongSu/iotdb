@@ -71,7 +71,6 @@ public class TriggerManager implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      // todo: init pool here?
       initMapsAndStartTriggers(TriggerStorageService.getInstance().recoveryAllTriggers());
       logger.info("TriggerManager service started.");
     } catch (TriggerException e) {

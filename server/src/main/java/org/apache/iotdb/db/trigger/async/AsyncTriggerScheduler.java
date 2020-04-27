@@ -21,7 +21,9 @@ package org.apache.iotdb.db.trigger.async;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
@@ -39,7 +41,7 @@ public class AsyncTriggerScheduler implements IService {
 
   private final ConcurrentHashMap<String, AsyncTriggerExecutionQueue> idToExecutionQueue;
   private LinkedBlockingQueue<AsyncTriggerExecutionQueue> waitingQueue;
-  private AsyncTriggerExecutionPool pool;
+  private ExecutorService executorService;
 
   private Thread transferThread;
   private final Runnable transferTask = () -> {
@@ -53,7 +55,7 @@ public class AsyncTriggerScheduler implements IService {
           waitingQueue.offer(executionQueue);
           continue;
         }
-        pool.submit(executionQueue);
+        executorService.submit(executionQueue);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -64,6 +66,9 @@ public class AsyncTriggerScheduler implements IService {
   private AsyncTriggerScheduler() {
     idToExecutionQueue = new ConcurrentHashMap<>();
     waitingQueue = new LinkedBlockingQueue<>();
+    int concurrentTriggerExecutionThread = 4; // todo: configurable
+    executorService = IoTDBThreadPoolFactory.newFixedThreadPool(concurrentTriggerExecutionThread,
+        ThreadName.TRIGGER_EXECUTOR_SERVICE.getName());
   }
 
   @Override
@@ -78,9 +83,8 @@ public class AsyncTriggerScheduler implements IService {
 
   @Override
   public void stop() {
-    // todo
     stopTransferThread();
-    // pool.stop();
+    executorService.shutdown();
     idToExecutionQueue.values().forEach(AsyncTriggerExecutionQueue::afterTriggerStop);
   }
 
@@ -122,7 +126,7 @@ public class AsyncTriggerScheduler implements IService {
 
   private void startTransferThread() {
     if (!transferThreadIsActivated()) {
-      transferThread = new Thread(transferTask, ThreadName.TRIGGER_SCHEDULER_TRANSFER.getName());
+      transferThread = new Thread(transferTask, ThreadName.TRIGGER_SCHEDULER.getName());
       transferThread.start();
       logger.info("AsyncTriggerScheduler transferThread started.");
     } else {

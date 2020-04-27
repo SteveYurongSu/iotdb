@@ -43,7 +43,8 @@ public enum ThreadName {
   LOAD_TSFILE("Load TsFile"),
   TIME_COST_STATSTIC("TIME_COST_STATSTIC"),
   QUERY_SERVICE("Query-ServerServiceImpl"),
-  TRIGGER_SCHEDULER_TRANSFER("IoTDB-TriggerSchedulerTransfer-Thread");
+  TRIGGER_SCHEDULER("Trigger-Scheduler-Thread"),
+  TRIGGER_EXECUTOR_SERVICE("Trigger-Executor-ServerServiceImpl");
 
   private String name;
 
