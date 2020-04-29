@@ -65,7 +65,6 @@ public class Planner {
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
-
   /**
    * given an unoptimized logical operator tree and return a optimized result.
    *
@@ -98,6 +97,10 @@ public class Planner {
       case FLUSH:
       case MERGE:
       case CLEAR_CACHE:
+      case CREATE_TRIGGER:
+      case DROP_TRIGGER:
+      case START_TRIGGER:
+      case STOP_TRIGGER:
         return operator;
       case QUERY:
       case UPDATE:

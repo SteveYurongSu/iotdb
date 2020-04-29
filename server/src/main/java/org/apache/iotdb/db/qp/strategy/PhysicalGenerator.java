@@ -44,9 +44,11 @@ import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
@@ -58,6 +60,8 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
+import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -75,9 +79,11 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
@@ -91,6 +97,8 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -270,6 +278,21 @@ public class PhysicalGenerator {
             OperatorType.MOVE_FILE);
       case CLEAR_CACHE:
         return new ClearCachePlan();
+      case CREATE_TRIGGER:
+        CreateTriggerOperator createTriggerOperator = (CreateTriggerOperator) operator;
+        return new CreateTriggerPlan(createTriggerOperator.getClassName(),
+            createTriggerOperator.getPath(), createTriggerOperator.getId(),
+            createTriggerOperator.getEnabledHooks(),
+            createTriggerOperator.getParameterConfigurations());
+      case DROP_TRIGGER:
+        DropTriggerOperator dropTriggerOperator = (DropTriggerOperator) operator;
+        return new DropTriggerPlan(dropTriggerOperator.getId());
+      case START_TRIGGER:
+        StartTriggerOperator startTriggerOperator = (StartTriggerOperator) operator;
+        return new StartTriggerPlan(startTriggerOperator.getId());
+      case STOP_TRIGGER:
+        StopTriggerOperator stopTriggerOperator = (StopTriggerOperator) operator;
+        return new StopTriggerPlan(stopTriggerOperator.getId());
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

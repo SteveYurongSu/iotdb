@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.trigger.manager;
 
 import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_BATCH_INSERT;
-import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_BATCH_INSERT;
 import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_DELETE;
 import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_INSERT;
+import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_BATCH_INSERT;
 import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_DELETE;
 import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_INSERT;
 
@@ -36,11 +36,12 @@ import org.apache.iotdb.db.exception.trigger.TriggerException;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 import org.apache.iotdb.db.trigger.async.AsyncTriggerScheduler;
+import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.db.trigger.definition.SyncTrigger;
 import org.apache.iotdb.db.trigger.definition.SyncTriggerExecutionResult;
@@ -373,10 +374,9 @@ public class TriggerManager implements IService {
   }
 
   private void checkPath(String pathString) throws MetadataException {
-    Path path = new Path(pathString);
-    MNode node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(path.getDevice());
-    if (!node.hasChild(path.getMeasurement())) {
-      throw new PathNotExistException(path.getFullPath());
+    MNode node = MManager.getInstance().getNodeByPath(pathString);
+    if (!(node instanceof LeafMNode)) {
+      throw new PathNotExistException(String.format("%s is not a measurement path.", pathString));
     }
   }
 

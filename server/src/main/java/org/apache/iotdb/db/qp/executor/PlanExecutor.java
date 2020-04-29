@@ -74,6 +74,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -101,11 +102,13 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -114,6 +117,8 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -229,6 +234,14 @@ public class PlanExecutor implements IPlanExecutor {
         return setStorageGroup((SetStorageGroupPlan) plan);
       case DELETE_STORAGE_GROUP:
         return deleteStorageGroups((DeleteStorageGroupPlan) plan);
+      case CREATE_TRIGGER:
+        return createTrigger((CreateTriggerPlan) plan);
+      case DROP_TRIGGER:
+        return dropTrigger((DropTriggerPlan) plan);
+      case START_TRIGGER:
+        return startTrigger((StartTriggerPlan) plan);
+      case STOP_TRIGGER:
+        return stopTrigger((StopTriggerPlan) plan);
       case TTL:
         operateTTL((SetTTLPlan) plan);
         return true;
@@ -906,20 +919,20 @@ public class PlanExecutor implements IPlanExecutor {
         // reset measurement to common name instead of alias
         measurementList[i] = measurementNode.getName();
 
-        if(!insertPlan.isInferType()) {
+        if (!insertPlan.isInferType()) {
           checkType(insertPlan, i, measurementNode.getSchema().getType());
         }
       }
       insertPlan.setMeasurements(measurementList);
       insertPlan.setSchemasAndTransferType(schemas);
-      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
-          .fireBeforeInsert(paths, insertPlan.getTime(), tsDataTypes, insertPlan.getValues());
-      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
-        return;
-      }
+//      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
+//          .fireBeforeInsert(paths, insertPlan.getTime(), tsDataTypes, insertPlan.getValues());
+//      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
+//        return;
+//      }
       StorageEngine.getInstance().insert(insertPlan);
-      TriggerManager.getInstance()
-          .fireAfterInsert(paths, insertPlan.getTime(), tsDataTypes, insertPlan.getValues());
+//      TriggerManager.getInstance()
+//          .fireAfterInsert(paths, insertPlan.getTime(), tsDataTypes, insertPlan.getValues());
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
@@ -967,8 +980,7 @@ public class PlanExecutor implements IPlanExecutor {
           // need to do nothing
           break;
       }
-    }
-    catch (ClassCastException e){
+    } catch (ClassCastException e) {
       logger.error("inconsistent type between client and server");
     }
   }
@@ -1144,6 +1156,44 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
+    }
+    return true;
+  }
+
+  private boolean createTrigger(CreateTriggerPlan plan) throws QueryProcessException {
+    try {
+      TriggerManager.getInstance()
+          .create(plan.getClassName(), plan.getPath(), plan.getId(), plan.getEnabledHooks(),
+              plan.getParameterConfigurations());
+    } catch (TriggerInstanceLoadException | MetadataException | TriggerManagementException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean dropTrigger(DropTriggerPlan plan) throws QueryProcessException {
+    try {
+      TriggerManager.getInstance().removeById(plan.getId());
+    } catch (TriggerManagementException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean startTrigger(StartTriggerPlan plan) throws QueryProcessException {
+    try {
+      TriggerManager.getInstance().start(plan.getId());
+    } catch (TriggerManagementException | TriggerInstanceLoadException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean stopTrigger(StopTriggerPlan plan) throws QueryProcessException {
+    try {
+      TriggerManager.getInstance().stop(plan.getId());
+    } catch (TriggerManagementException e) {
+      throw new QueryProcessException(e);
     }
     return true;
   }

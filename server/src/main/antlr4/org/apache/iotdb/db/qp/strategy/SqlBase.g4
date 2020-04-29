@@ -40,6 +40,10 @@ statement
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
+    | CREATE TRIGGER triggerName=ID triggerEventClause? ON fullPath WITH triggerAttributeClause #createTrigger
+    | DROP TRIGGER triggerName=ID #dropTrigger
+    | START TRIGGER triggerName=ID #startTrigger
+    | STOP TRIGGER triggerName=ID #stopTrigger
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
@@ -411,6 +415,27 @@ property
 autoCreateSchema
     : booleanClause
     | booleanClause INT
+    ;
+
+triggerEventClause
+    : triggerEvent (OPERATOR_OR triggerEvent)*
+    ;
+
+triggerEvent
+    : (BEFORE | AFTER) (INSERT | UPDATE | DELETE | BATCH INSERT)
+    | ON ALL EVENTS
+    ;
+
+triggerAttributeClause
+    : CLASSNAME OPERATOR_EQ className=suffixPath triggerParameterClause?
+    ;
+
+triggerParameterClause
+    : PARAMETER OPERATOR_EQ (keyValuePair COMMA)* (keyValuePair COMMA?)
+    ;
+
+keyValuePair
+    : OPERATOR_LT key=constant COMMA value=constant OPERATOR_GT
     ;
 
 //============================
@@ -852,6 +877,39 @@ TRUE
 FALSE
     : F A L S E
     ;
+
+BEFORE
+    : B E F O R E
+    ;
+
+AFTER
+    : A F T E R
+    ;
+
+BATCH
+    : B A T C H
+    ;
+
+TRIGGER
+    : T R I G G E R
+    ;
+
+START
+    : S T A R T
+    ;
+
+STOP
+    : S T O P
+    ;
+
+CLASSNAME
+    : C L A S S N A M E
+    ;
+
+EVENTS
+    : E V E N T S
+    ;
+
 //============================
 // End of the keywords list
 //============================

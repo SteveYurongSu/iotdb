@@ -17,34 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.definition;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public enum HookID {
+import java.util.Collections;
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  BEFORE_INSERT      (0B00000001),
-  BEFORE_DELETE      (0B00000010),
-  BEFORE_UPDATE      (0B00000100),
-  BEFORE_BATCH_INSERT(0B00001000),
+public class StopTriggerPlan extends PhysicalPlan {
 
-  AFTER_INSERT       (0B00010000),
-  AFTER_DELETE       (0B00100000),
-  AFTER_UPDATE       (0B01000000),
-  AFTER_BATCH_INSERT (0B10000000),
+  private final String id;
 
-  ON_ALL_EVENTS      (~0B0),
-  ;
-
-  private final int id;
-
-  HookID(int id) {
+  public StopTriggerPlan(String id) {
+    super(false, OperatorType.STOP_TRIGGER);
     this.id = id;
+    canbeSplit = false;
   }
 
-  public boolean isEnabled(int enableHooks) {
-    return 0 < (id & enableHooks);
+  @Override
+  public List<Path> getPaths() {
+    return Collections.emptyList();
   }
 
-  public int getId() {
+  public String getId() {
     return id;
   }
 }

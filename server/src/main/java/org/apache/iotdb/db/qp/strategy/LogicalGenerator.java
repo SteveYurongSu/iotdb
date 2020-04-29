@@ -50,9 +50,11 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
@@ -67,6 +69,8 @@ import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
+import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
@@ -157,6 +161,11 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
+//import org.apache.iotdb.db.query.fill.IFill;
+//import org.apache.iotdb.db.query.fill.LinearFill;
+//import org.apache.iotdb.db.query.fill.PreviousFill;
+import org.apache.iotdb.db.trigger.definition.HookID;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1332,6 +1341,85 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       value = propertyValueContext.getText();
     }
     operator.setValue(value);
+  }
+
+  @Override
+  public void enterCreateTrigger(CreateTriggerContext ctx) {
+    initializedOperator = new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
+    operatorType = SQLConstant.TOK_TRIGGER_CREATE;
+    CreateTriggerOperator operator = (CreateTriggerOperator) initializedOperator;
+    operator.setId(ctx.triggerName.getText());
+    operator.setPath(parseFullPath(ctx.fullPath()).getFullPath());
+  }
+
+  @Override
+  public void enterTriggerEvent(TriggerEventContext ctx) {
+    CreateTriggerOperator operator = (CreateTriggerOperator) initializedOperator;
+    if (ctx.ALL() != null) {
+      operator.enableHook(HookID.ON_ALL_EVENTS);
+      return;
+    }
+    if (ctx.BEFORE() != null) {
+      if (ctx.INSERT() != null) {
+        if (ctx.BATCH() != null) {
+          operator.enableHook(HookID.BEFORE_BATCH_INSERT);
+        } else {
+          operator.enableHook(HookID.BEFORE_INSERT);
+        }
+      } else if (ctx.DELETE() != null) {
+        operator.enableHook(HookID.BEFORE_DELETE);
+      } else if (ctx.UPDATE() != null) {
+        operator.enableHook(HookID.BEFORE_UPDATE);
+      }
+    } else if (ctx.AFTER() != null) {
+      if (ctx.INSERT() != null) {
+        if (ctx.BATCH() != null) {
+          operator.enableHook(HookID.AFTER_BATCH_INSERT);
+        } else {
+          operator.enableHook(HookID.AFTER_INSERT);
+        }
+      } else if (ctx.DELETE() != null) {
+        operator.enableHook(HookID.AFTER_DELETE);
+      } else if (ctx.UPDATE() != null) {
+        operator.enableHook(HookID.AFTER_UPDATE);
+      }
+    }
+  }
+
+  @Override
+  public void enterTriggerAttributeClause(TriggerAttributeClauseContext ctx) {
+    CreateTriggerOperator operator = (CreateTriggerOperator) initializedOperator;
+    operator.setClassName(ctx.className.getText());
+  }
+
+  @Override
+  public void enterKeyValuePair(KeyValuePairContext ctx) {
+    CreateTriggerOperator operator = (CreateTriggerOperator) initializedOperator;
+    operator.addParameter(ctx.key.getText(), ctx.value.getText());
+  }
+
+  @Override
+  public void enterDropTrigger(DropTriggerContext ctx) {
+    initializedOperator = new DropTriggerOperator(SQLConstant.TOK_TRIGGER_DROP);
+    operatorType = SQLConstant.TOK_TRIGGER_DROP;
+    DropTriggerOperator operator = (DropTriggerOperator) initializedOperator;
+    operator.setId(ctx.triggerName.getText());
+  }
+
+  @Override
+  public void enterStartTrigger(StartTriggerContext ctx) {
+    initializedOperator = new StartTriggerOperator(SQLConstant.TOK_TRIGGER_START);
+    operatorType = SQLConstant.TOK_TRIGGER_START;
+    StartTriggerOperator operator = (StartTriggerOperator) initializedOperator;
+    operator.setId(ctx.triggerName.getText());
+  }
+
+  @Override
+  public void enterStopTrigger(StopTriggerContext ctx) {
+    initializedOperator = new StopTriggerOperator(SQLConstant.TOK_TRIGGER_STOP);
+    operatorType = SQLConstant.TOK_TRIGGER_STOP;
+    StopTriggerOperator operator = (StopTriggerOperator) initializedOperator;
+    operator.setId(ctx.triggerName.getText());
   }
 
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
