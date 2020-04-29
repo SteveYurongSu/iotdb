@@ -127,8 +127,8 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
             return new ShowTimeSeriesPlan(ShowContentType.TIMESERIES,
-                    showTimeSeriesOperator.getPath(), showTimeSeriesOperator.isContains(),
-                    showTimeSeriesOperator.getKey(), showTimeSeriesOperator.getValue());
+                showTimeSeriesOperator.getPath(), showTimeSeriesOperator.isContains(),
+                showTimeSeriesOperator.getKey(), showTimeSeriesOperator.getValue());
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
           case SQLConstant.TOK_DEVICES:
@@ -163,6 +163,21 @@ public class PhysicalGenerator {
       case MOVE_FILE:
         return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
             ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);
+      case CREATE_TRIGGER:
+        CreateTriggerOperator createTriggerOperator = (CreateTriggerOperator) operator;
+        return new CreateTriggerPlan(createTriggerOperator.getClassName(),
+            createTriggerOperator.getPath(), createTriggerOperator.getId(),
+            createTriggerOperator.getEnabledHooks(),
+            createTriggerOperator.getParameterConfigurations());
+      case DROP_TRIGGER:
+        DropTriggerOperator dropTriggerOperator = (DropTriggerOperator) operator;
+        return new DropTriggerPlan(dropTriggerOperator.getId());
+      case START_TRIGGER:
+        StartTriggerOperator startTriggerOperator = (StartTriggerOperator) operator;
+        return new StartTriggerPlan(startTriggerOperator.getId());
+      case STOP_TRIGGER:
+        StopTriggerOperator stopTriggerOperator = (StopTriggerOperator) operator;
+        return new StopTriggerPlan(stopTriggerOperator.getId());
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -187,14 +202,14 @@ public class PhysicalGenerator {
       ((GroupByFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
       ((GroupByFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
       if (!queryOperator.isLeftCRightO()) {
-        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime()+1);
-        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime()+1);
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
       } else {
         ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
         ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
       }
       ((GroupByFillPlan) queryPlan)
-              .setAggregations(queryOperator.getSelectOperator().getAggregations());
+          .setAggregations(queryOperator.getSelectOperator().getAggregations());
       for (String aggregation : queryPlan.getAggregations()) {
         if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
           throw new QueryProcessException("Group By Fill only support last_value function");
@@ -207,8 +222,8 @@ public class PhysicalGenerator {
       ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
       ((GroupByPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
       if (!queryOperator.isLeftCRightO()) {
-        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime()+1);
-        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime()+1);
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
       } else {
         ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
         ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());

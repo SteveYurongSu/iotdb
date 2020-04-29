@@ -17,34 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.definition;
+package org.apache.iotdb.db.qp.logical.sys;
 
-public enum HookID {
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
-  BEFORE_INSERT      (0B00000001),
-  BEFORE_DELETE      (0B00000010),
-  BEFORE_UPDATE      (0B00000100),
-  BEFORE_BATCH_INSERT(0B00001000),
+public class DropTriggerOperator extends RootOperator {
 
-  AFTER_INSERT       (0B00010000),
-  AFTER_DELETE       (0B00100000),
-  AFTER_UPDATE       (0B01000000),
-  AFTER_BATCH_INSERT (0B10000000),
+  private String id;
 
-  ON_ALL_EVENTS      (~0B0),
-  ;
+  public DropTriggerOperator(int tokenIntType) {
+    super(tokenIntType);
+  }
 
-  private final int id;
-
-  HookID(int id) {
+  public void setId(String id) {
     this.id = id;
   }
 
-  public boolean isEnabled(int enableHooks) {
-    return 0 < (id & enableHooks);
-  }
-
-  public int getId() {
+  public String getId() {
     return id;
   }
 }

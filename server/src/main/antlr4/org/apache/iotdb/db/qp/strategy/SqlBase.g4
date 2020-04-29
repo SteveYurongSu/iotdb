@@ -35,6 +35,10 @@ statement
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
+    | CREATE TRIGGER triggerName=ID triggerEventClause? ON fullPath WITH triggerAttributeClause #createTrigger
+    | DROP TRIGGER triggerName=ID #dropTrigger
+    | START TRIGGER triggerName=ID #startTrigger
+    | STOP TRIGGER triggerName=ID #stopTrigger
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
@@ -383,6 +387,27 @@ property
 autoCreateSchema
     : ID
     | ID INT
+    ;
+
+triggerEventClause
+    : triggerEvent (OPERATOR_OR triggerEvent)*
+    ;
+
+triggerEvent
+    : (BEFORE | AFTER) (INSERT | UPDATE | DELETE | BATCH INSERT)
+    | ON ALL EVENTS
+    ;
+
+triggerAttributeClause
+    : CLASSNAME OPERATOR_EQ className=suffixPath triggerParameterClause?
+    ;
+
+triggerParameterClause
+    : PARAMETER OPERATOR_EQ (keyValuePair COMMA)* (keyValuePair COMMA?)
+    ;
+
+keyValuePair
+    : OPERATOR_LT key=constant COMMA value=constant OPERATOR_GT
     ;
 
 //============================
@@ -796,6 +821,39 @@ ATTRIBUTES
 TAGS
     : T A G S
     ;
+
+BEFORE
+    : B E F O R E
+    ;
+
+AFTER
+    : A F T E R
+    ;
+
+BATCH
+    : B A T C H
+    ;
+
+TRIGGER
+    : T R I G G E R
+    ;
+
+START
+    : S T A R T
+    ;
+
+STOP
+    : S T O P
+    ;
+
+CLASSNAME
+    : C L A S S N A M E
+    ;
+
+EVENTS
+    : E V E N T S
+    ;
+
 //============================
 // End of the keywords list
 //============================

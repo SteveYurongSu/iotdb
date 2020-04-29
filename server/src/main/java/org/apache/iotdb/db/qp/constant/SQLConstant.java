@@ -138,6 +138,11 @@ public class SQLConstant {
   public static final int TOK_COUNT_NODE_TIMESERIES = 78;
   public static final int TOK_COUNT_NODES = 79;
 
+  public static final int TOK_TRIGGER_CREATE = 80;
+  public static final int TOK_TRIGGER_DROP = 81;
+  public static final int TOK_TRIGGER_START = 82;
+  public static final int TOK_TRIGGER_STOP = 83;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
@@ -205,6 +210,11 @@ public class SQLConstant {
     tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
     tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
     tokenNames.put(TOK_MOVE_FILE, "TOK_MOVE_FILE");
+
+    tokenNames.put(TOK_TRIGGER_CREATE, "TOK_TRIGGER_CREATE");
+    tokenNames.put(TOK_TRIGGER_DROP, "TOK_TRIGGER_DROP");
+    tokenNames.put(TOK_TRIGGER_START, "TOK_TRIGGER_START");
+    tokenNames.put(TOK_TRIGGER_STOP, "TOK_TRIGGER_STOP");
   }
 
   static {
@@ -220,6 +230,5 @@ public class SQLConstant {
 
   public static boolean isReservedPath(Path pathStr) {
     return pathStr.equals(SQLConstant.RESERVED_TIME);
-
   }
 }
