@@ -146,6 +146,11 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_CHILD_PATHS:
             return new ShowChildPathsPlan(ShowContentType.CHILD_PATH,
                 ((ShowChildPathsOperator) operator).getPath());
+          case SQLConstant.TOK_TRIGGERS:
+            return new ShowTriggersPlan(ShowContentType.TRIGGERS,
+                ((ShowTriggersOperator) operator).getPath(),
+                ((ShowTriggersOperator) operator).showSyncTriggerOrNot(),
+                ((ShowTriggersOperator) operator).showAsyncTriggerOrNot());
           default:
             throw new LogicalOperatorException(String
                 .format("not supported operator type %s in show operation.", operator.getType()));

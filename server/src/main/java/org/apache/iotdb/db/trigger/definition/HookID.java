@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.trigger.definition;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public enum HookID {
 
   BEFORE_INSERT      (0B00000001),
@@ -40,11 +43,21 @@ public enum HookID {
     this.id = id;
   }
 
-  public boolean isEnabled(int enableHooks) {
-    return 0 < (id & enableHooks);
+  public boolean isEnabled(int enabledHooks) {
+    return 0 < (id & enabledHooks);
   }
 
   public int getId() {
     return id;
+  }
+
+  public static String show(int enabledHooks) {
+    List<String> enabledHookNames = new ArrayList<>();
+    for (HookID hookID : values()) {
+      if (hookID.isEnabled(enabledHooks)) {
+        enabledHookNames.add(hookID.name());
+      }
+    }
+    return String.join(" | ", enabledHookNames);
   }
 }

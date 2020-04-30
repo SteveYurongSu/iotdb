@@ -26,6 +26,7 @@ import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_INSERT;
 import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_DELETE;
 import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_INSERT;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -324,6 +325,32 @@ public class TriggerManager implements IService {
     } else {
       pathToAsyncTriggers.remove(trigger.getPath());
     }
+  }
+
+  public List<Trigger> show(String path, boolean showSyncTrigger, boolean showAsyncTrigger) {
+    List<Trigger> triggers = new ArrayList<>();
+    if (path == null) {
+      if (showSyncTrigger) {
+        triggers.addAll(pathToSyncTriggers.values());
+      }
+      if (showAsyncTrigger) {
+        triggers.addAll(pathToAsyncTriggers.values());
+      }
+    } else {
+      if (showSyncTrigger) {
+        Trigger trigger = pathToSyncTriggers.get(path);
+        if (trigger != null) {
+          triggers.add(trigger);
+        }
+      }
+      if (showAsyncTrigger) {
+        Trigger trigger = pathToAsyncTriggers.get(path);
+        if (trigger != null) {
+          triggers.add(trigger);
+        }
+      }
+    }
+    return triggers;
   }
 
   public void removeByPath(String path) throws TriggerManagementException {

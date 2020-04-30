@@ -138,10 +138,11 @@ public class SQLConstant {
   public static final int TOK_COUNT_NODE_TIMESERIES = 78;
   public static final int TOK_COUNT_NODES = 79;
 
-  public static final int TOK_TRIGGER_CREATE = 80;
-  public static final int TOK_TRIGGER_DROP = 81;
-  public static final int TOK_TRIGGER_START = 82;
-  public static final int TOK_TRIGGER_STOP = 83;
+  public static final int TOK_TRIGGERS = 80;
+  public static final int TOK_TRIGGER_CREATE = 81;
+  public static final int TOK_TRIGGER_DROP = 82;
+  public static final int TOK_TRIGGER_START = 83;
+  public static final int TOK_TRIGGER_STOP = 84;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -211,6 +212,7 @@ public class SQLConstant {
     tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
     tokenNames.put(TOK_MOVE_FILE, "TOK_MOVE_FILE");
 
+    tokenNames.put(TOK_TRIGGERS, "TOK_TRIGGERS");
     tokenNames.put(TOK_TRIGGER_CREATE, "TOK_TRIGGER_CREATE");
     tokenNames.put(TOK_TRIGGER_DROP, "TOK_TRIGGER_DROP");
     tokenNames.put(TOK_TRIGGER_START, "TOK_TRIGGER_START");

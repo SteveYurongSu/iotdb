@@ -1170,6 +1170,26 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     operator.setId(ctx.triggerName.getText());
   }
 
+  @Override
+  public void enterShowTriggers(ShowTriggersContext ctx) {
+    initializedOperator = new ShowTriggersOperator(SQLConstant.TOK_TRIGGERS);
+    operatorType = SQLConstant.TOK_TRIGGERS;
+    ShowTriggersOperator showTriggersOperator = (ShowTriggersOperator) initializedOperator;
+    if (ctx.fullPath() != null) {
+      showTriggersOperator.setPath(parseFullPath(ctx.fullPath()).getFullPath());
+    }
+    if (ctx.SYNC() != null) {
+      showTriggersOperator.setShowSyncTrigger(true);
+      return;
+    }
+    if (ctx.ASYNC() != null) {
+      showTriggersOperator.setShowAsyncTrigger(true);
+      return;
+    }
+    showTriggersOperator.setShowSyncTrigger(true);
+    showTriggersOperator.setShowAsyncTrigger(true);
+  }
+
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
     if (ctx.andExpression().size() == 1) {
       return parseAndExpression(ctx.andExpression(0));

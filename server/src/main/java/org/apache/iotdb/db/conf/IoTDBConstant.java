@@ -73,6 +73,13 @@ public class IoTDBConstant {
   public static final String COLUMN_STORAGE_GROUP = "storage group";
   public static final String COLUMN_TTL = "ttl";
 
+  public static final String COLUMN_TRIGGER_ID = "uid";
+  public static final String COLUMN_TRIGGER_PATH = "path";
+  public static final String COLUMN_TRIGGER_SYNC_TYPE = "sync type";
+  public static final String COLUMN_TRIGGER_ENABLED_HOOKS = "enabled hooks";
+  public static final String COLUMN_TRIGGER_CLASS_NAME = "class name";
+  public static final String COLUMN_TRIGGER_STATUS = "status";
+
   public static final String PATH_WILDCARD = "*";
 
   // data folder name
