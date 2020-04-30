@@ -44,6 +44,7 @@ statement
     | DROP TRIGGER triggerName=ID #dropTrigger
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
+    | SHOW (ALL | SYNC | ASYNC)? TRIGGERS (ON fullPath)? #showTriggers
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
@@ -878,6 +879,14 @@ FALSE
     : F A L S E
     ;
 
+SYNC
+    : S Y N C
+    ;
+
+ASYNC
+    : A S Y N C
+    ;
+
 BEFORE
     : B E F O R E
     ;
@@ -892,6 +901,10 @@ BATCH
 
 TRIGGER
     : T R I G G E R
+    ;
+
+TRIGGERS
+    : T R I G G E R S
     ;
 
 START

@@ -32,6 +32,12 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ENABLED_HOOKS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ID;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_SYNC_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -117,6 +123,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -126,7 +133,9 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.trigger.definition.HookID;
 import org.apache.iotdb.db.trigger.definition.SyncTriggerExecutionResult;
+import org.apache.iotdb.db.trigger.definition.Trigger;
 import org.apache.iotdb.db.trigger.manager.TriggerManager;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -371,6 +380,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountNodeTimeSeries((CountPlan) showPlan);
       case COUNT_NODES:
         return processCountNodes((CountPlan) showPlan);
+      case TRIGGERS:
+        return processShowTriggers((ShowTriggersPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -500,6 +511,36 @@ public class PlanExecutor implements IPlanExecutor {
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = mManager.showTimeseries(showTimeSeriesPlan);
     return getQueryDataSet(timeseriesList);
+  }
+
+  private QueryDataSet processShowTriggers(ShowTriggersPlan showPlan) {
+    List<Path> paths = new ArrayList<>();
+    paths.add(new Path(COLUMN_TRIGGER_ID));
+    paths.add(new Path(COLUMN_TRIGGER_PATH));
+    paths.add(new Path(COLUMN_TRIGGER_SYNC_TYPE));
+    paths.add(new Path(COLUMN_TRIGGER_ENABLED_HOOKS));
+    paths.add(new Path(COLUMN_TRIGGER_CLASS_NAME));
+    paths.add(new Path(COLUMN_TRIGGER_STATUS));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < paths.size(); ++i) {
+      dataTypes.add(TSDataType.TEXT);
+    }
+    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    
+    List<Trigger> triggers = TriggerManager.getInstance()
+        .show(showPlan.getPath(), showPlan.showSyncTriggerOrNot(),
+            showPlan.showAsyncTriggerOrNot());
+    triggers.forEach((Trigger trigger) -> {
+      RowRecord record = new RowRecord(0);
+      record.addField(trigger.getId(), TSDataType.TEXT);
+      record.addField(trigger.getPath(), TSDataType.TEXT);
+      record.addField(trigger.isSynced() ? "SYNC" : "ASYNC", TSDataType.TEXT);
+      record.addField(HookID.show(trigger.getEnabledHooks()), TSDataType.TEXT);
+      record.addField(trigger.getClass().getName(), TSDataType.TEXT);
+      record.addField(trigger.isActive() ? "STARTED" : "STOPPED", TSDataType.TEXT);
+      listDataSet.putRecord(record);
+    });
+    return listDataSet;
   }
 
   private QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {

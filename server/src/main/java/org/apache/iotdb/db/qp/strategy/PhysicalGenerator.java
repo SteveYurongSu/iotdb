@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -97,6 +98,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -257,6 +259,11 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_CHILD_PATHS:
             return new ShowChildPathsPlan(
                 ShowContentType.CHILD_PATH, ((ShowChildPathsOperator) operator).getPath());
+          case SQLConstant.TOK_TRIGGERS:
+            return new ShowTriggersPlan(ShowContentType.TRIGGERS,
+                ((ShowTriggersOperator) operator).getPath(),
+                ((ShowTriggersOperator) operator).showSyncTriggerOrNot(),
+                ((ShowTriggersOperator) operator).showAsyncTriggerOrNot());
           default:
             throw new LogicalOperatorException(
                 String.format(
