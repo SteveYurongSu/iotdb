@@ -526,7 +526,7 @@ public class PlanExecutor implements IPlanExecutor {
       dataTypes.add(TSDataType.TEXT);
     }
     ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
-    
+
     List<Trigger> triggers = TriggerManager.getInstance()
         .show(showPlan.getPath(), showPlan.showSyncTriggerOrNot(),
             showPlan.showAsyncTriggerOrNot());
@@ -1079,7 +1079,6 @@ public class PlanExecutor implements IPlanExecutor {
       String deviceId = insertTabletPlan.getDeviceId();
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
-      Path[] paths = new Path[measurementList.length];
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
@@ -1091,8 +1090,8 @@ public class PlanExecutor implements IPlanExecutor {
                     "Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          paths[i] = new Path(deviceId, measurementList[i]);
-          internalCreateTimeseries(paths[i].getFullPath(), dataTypes[i]);
+          internalCreateTimeseries((new Path(deviceId, measurementList[i])).getFullPath(),
+              dataTypes[i]);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
 
@@ -1112,13 +1111,15 @@ public class PlanExecutor implements IPlanExecutor {
       TSStatus[] tsStatuses = new TSStatus[insertTabletPlan.getRowCount()];
       Arrays.fill(tsStatuses, RpcUtils.SUCCESS_STATUS);
       SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
-          .fireBeforeBatchInsert(paths, insertTabletPlan.getTimes(), insertTabletPlan.getColumns());
+          .fireBeforeBatchInsert(insertTabletPlan.getPaths(), insertTabletPlan.getTimes(),
+              insertTabletPlan.getColumns());
       if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
         return tsStatuses;
       }
       tsStatuses = StorageEngine.getInstance().insertTablet(insertTabletPlan);
       TriggerManager.getInstance()
-          .fireAfterBatchInsert(paths, insertTabletPlan.getTimes(), insertTabletPlan.getColumns());
+          .fireAfterBatchInsert(insertTabletPlan.getPaths(), insertTabletPlan.getTimes(),
+              insertTabletPlan.getColumns());
       return tsStatuses;
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

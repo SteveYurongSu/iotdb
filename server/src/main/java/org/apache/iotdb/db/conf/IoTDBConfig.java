@@ -185,6 +185,11 @@ public class IoTDBConfig {
   private String queryDir = "data" + File.separator + "query";
 
   /**
+   * Trigger directory.
+   */
+  private String triggerDir = "data" + File.separator + "trigger";
+
+  /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -580,13 +585,8 @@ public class IoTDBConfig {
   private long startUpNanosecond = System.nanoTime();
 
   /**
-   * Trigger directory.
-   */
-  private String triggerDir = "data" + File.separator + "trigger";
-
-  /**
-   * The execution pool size for async trigger tasks execution. Set to 1 when less than or equal to
-   * 0.
+   * The execution pool size for async trigger tasks execution.
+   * Set to 1 when less than or equal to 0.
    */
   private int asyncTriggerExecutionPoolSize = 4;
 
