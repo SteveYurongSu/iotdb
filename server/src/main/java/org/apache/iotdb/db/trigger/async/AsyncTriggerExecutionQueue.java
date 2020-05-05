@@ -21,29 +21,31 @@ package org.apache.iotdb.db.trigger.async;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.db.trigger.definition.AsyncTriggerRejectionPolicy;
 
 public class AsyncTriggerExecutionQueue extends WrappedRunnable {
 
-  private final static int MAX_ASYNC_TRIGGER_EXECUTOR = 10;
-
   private final AsyncTrigger trigger;
+  private final int maxAsyncTriggerExecutorNumber;
   private final ConcurrentLinkedQueue<AsyncTriggerExecutor> executors;
   private final ConcurrentLinkedQueue<AsyncTriggerTask> tasks;
 
   public AsyncTriggerExecutionQueue(AsyncTrigger trigger) throws TriggerInstanceLoadException {
     this.trigger = trigger;
+    maxAsyncTriggerExecutorNumber = IoTDBDescriptor.getInstance().getConfig()
+        .getAsyncTriggerTaskExecutorNum();
     executors = new ConcurrentLinkedQueue<>();
-    for (int i = 0; i < MAX_ASYNC_TRIGGER_EXECUTOR; ++i) {
+    for (int i = 0; i < maxAsyncTriggerExecutorNumber; ++i) {
       executors.add(new AsyncTriggerExecutor(trigger));
     }
     tasks = new ConcurrentLinkedQueue<>();
   }
 
   public boolean submit(AsyncTriggerTask task) {
-    if (executors.isEmpty() && trigger.getRejectionPolicy(task.getHookID())
+    if (executors.isEmpty() && trigger.getRejectionPolicy(task)
         .equals(AsyncTriggerRejectionPolicy.DISCARD)) {
       return false;
     }
@@ -99,6 +101,6 @@ public class AsyncTriggerExecutionQueue extends WrappedRunnable {
   }
 
   private boolean allExecutorsAreIdle() {
-    return executors.size() == MAX_ASYNC_TRIGGER_EXECUTOR;
+    return executors.size() == maxAsyncTriggerExecutorNumber;
   }
 }

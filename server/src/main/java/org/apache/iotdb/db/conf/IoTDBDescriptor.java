@@ -417,6 +417,24 @@ public class IoTDBDescriptor {
       //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
       conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
 
+      // trigger module
+      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_TRIGGER_DIR) != null) {
+        conf.setTriggerDir(properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_TRIGGER_DIR));
+      }
+      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE)
+          != null) {
+        int asyncTriggerExecutionPoolSize = Integer.parseInt(properties
+            .getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE));
+        conf.setAsyncTriggerExecutionPoolSize(
+            asyncTriggerExecutionPoolSize <= 0 ? 1 : asyncTriggerExecutionPoolSize);
+      }
+      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM)
+          != null) {
+        int asyncTriggerTaskExecutionNum = Integer.parseInt(
+            properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM));
+        conf.setAsyncTriggerTaskExecutorNum(
+            asyncTriggerTaskExecutionNum <= 0 ? 1 : asyncTriggerTaskExecutionNum);
+      }
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()

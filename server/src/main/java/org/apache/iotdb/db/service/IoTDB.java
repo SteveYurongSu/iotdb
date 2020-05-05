@@ -108,7 +108,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(StorageEngine.getInstance());
-    // todo: isEnable
     registerManager.register(TriggerStorageService.getInstance());
     registerManager.register(TriggerManager.getInstance());
     registerManager.register(AsyncTriggerScheduler.getInstance());

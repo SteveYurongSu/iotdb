@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.service.IService;
@@ -66,8 +67,8 @@ public class AsyncTriggerScheduler implements IService {
   private AsyncTriggerScheduler() {
     idToExecutionQueue = new ConcurrentHashMap<>();
     waitingQueue = new LinkedBlockingQueue<>();
-    int concurrentTriggerExecutionThread = 4; // todo: configurable
-    executorService = IoTDBThreadPoolFactory.newFixedThreadPool(concurrentTriggerExecutionThread,
+    executorService = IoTDBThreadPoolFactory.newFixedThreadPool(
+        IoTDBDescriptor.getInstance().getConfig().getAsyncTriggerExecutionPoolSize(),
         ThreadName.TRIGGER_EXECUTOR_SERVICE.getName());
   }
 

@@ -20,12 +20,14 @@ package org.apache.iotdb.db.conf;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TRIGGER_CONFIGURATION_FILENAME;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -56,7 +58,7 @@ public class IoTDBConfig {
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER +"(" + NODE_MATCHER+ ")*[\"|\']";
+      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER + "(" + NODE_MATCHER + ")*[\"|\']";
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
@@ -538,9 +540,9 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will
-   * also be affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
+   * property is changed, previous created storage group which are not set TTL will also be
+   * affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -550,8 +552,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition if disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
 
@@ -577,6 +578,26 @@ public class IoTDBConfig {
 
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
+
+  /**
+   * Trigger directory.
+   */
+  private String triggerDir = "data" + File.separator + "trigger";
+
+  /**
+   * The execution pool size for async trigger tasks execution. Set to 1 when less than or equal to
+   * 0.
+   */
+  private int asyncTriggerExecutionPoolSize = 4;
+
+  /**
+   * If the number of async tasks that have been submitted but not yet executed for a trigger
+   * instance exceeds the following setting value, the async task scheduler will check the return
+   * value of {@link AsyncTrigger#getRejectionPolicy} to determine whether the newly arrived async
+   * trigger task need to be submitted. (continue to submit may cause OOM, because the task
+   * production rate > task execution rate) Set to 1 when less than or equal to 0.
+   */
+  private int asyncTriggerTaskExecutorNum = 16;
 
   public IoTDBConfig() {
     // empty constructor
@@ -636,6 +657,7 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
+    triggerDir = addHomeDir(triggerDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1173,7 +1195,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -1588,5 +1611,33 @@ public class IoTDBConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public String getTriggerDir() {
+    return triggerDir;
+  }
+
+  public void setTriggerDir(String triggerDir) {
+    this.triggerDir = triggerDir;
+  }
+
+  public int getAsyncTriggerExecutionPoolSize() {
+    return asyncTriggerExecutionPoolSize;
+  }
+
+  public void setAsyncTriggerExecutionPoolSize(int asyncTriggerExecutionPoolSize) {
+    this.asyncTriggerExecutionPoolSize = asyncTriggerExecutionPoolSize;
+  }
+
+  public int getAsyncTriggerTaskExecutorNum() {
+    return asyncTriggerTaskExecutorNum;
+  }
+
+  public void setAsyncTriggerTaskExecutorNum(int asyncTriggerTaskExecutorNum) {
+    this.asyncTriggerTaskExecutorNum = asyncTriggerTaskExecutorNum;
+  }
+
+  public String getTriggerConfigurationFilename() {
+    return getTriggerDir() + File.separator + TRIGGER_CONFIGURATION_FILENAME;
   }
 }

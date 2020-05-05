@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.trigger.definition;
 
+import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
+
 public abstract class AsyncTrigger extends Trigger {
 
   public AsyncTrigger(String path, String id, int enabledHooks,
@@ -49,8 +51,8 @@ public abstract class AsyncTrigger extends Trigger {
   public void afterDelete(final long timestamp) {
   }
 
-  public AsyncTriggerRejectionPolicy getRejectionPolicy(HookID hook) {
-    switch (hook) {
+  public AsyncTriggerRejectionPolicy getRejectionPolicy(AsyncTriggerTask task) {
+    switch (task.getHookID()) {
       case BEFORE_INSERT:
       case AFTER_INSERT:
       case BEFORE_BATCH_INSERT:
