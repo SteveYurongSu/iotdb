@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.conf;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.TRIGGER_CONFIGURATION_FILENAME;
+
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -534,6 +537,27 @@ public class IoTDBConfig {
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  /**
+   * Trigger directory.
+   */
+  private String triggerDir = "data" + File.separator + "trigger";
+
+  /**
+   * The execution pool size for async trigger tasks execution.
+   * Set to 1 when less than or equal to 0.
+   */
+  private int asyncTriggerExecutionPoolSize = 4;
+
+  /**
+   * If the number of async tasks that have been submitted but not yet executed for a trigger
+   * instance exceeds the following setting value, the async task scheduler will check the return
+   * value of {@link AsyncTrigger#getRejectionPolicy} to determine whether the newly arrived async
+   * trigger task need to be submitted. (continue to submit may cause OOM, because the task
+   * production rate > task execution rate)
+   * Set to 1 when less than or equal to 0.
+   */
+  private int asyncTriggerTaskExecutorNum = 16;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -584,6 +608,7 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
+    triggerDir = addHomeDir(triggerDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1491,5 +1516,33 @@ public class IoTDBConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public String getTriggerDir() {
+    return triggerDir;
+  }
+
+  public void setTriggerDir(String triggerDir) {
+    this.triggerDir = triggerDir;
+  }
+
+  public int getAsyncTriggerExecutionPoolSize() {
+    return asyncTriggerExecutionPoolSize;
+  }
+
+  public void setAsyncTriggerExecutionPoolSize(int asyncTriggerExecutionPoolSize) {
+    this.asyncTriggerExecutionPoolSize = asyncTriggerExecutionPoolSize;
+  }
+
+  public int getAsyncTriggerTaskExecutorNum() {
+    return asyncTriggerTaskExecutorNum;
+  }
+
+  public void setAsyncTriggerTaskExecutorNum(int asyncTriggerTaskExecutorNum) {
+    this.asyncTriggerTaskExecutorNum = asyncTriggerTaskExecutorNum;
+  }
+
+  public String getTriggerConfigurationFilename() {
+    return getTriggerDir() + File.separator + TRIGGER_CONFIGURATION_FILENAME;
   }
 }

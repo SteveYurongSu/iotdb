@@ -25,6 +25,5 @@ public class TriggerInstanceLoadException extends TriggerException {
 
   public TriggerInstanceLoadException(String message) {
     super(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-    // super(message, TSStatusCode.TRIGGER_INSTANCE_LOAD_ERROR.getStatusCode());
   }
 }

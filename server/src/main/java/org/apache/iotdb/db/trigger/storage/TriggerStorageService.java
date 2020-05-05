@@ -21,7 +21,6 @@ package org.apache.iotdb.db.trigger.storage;
 
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.createTriggerInstanceFromJar;
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.makeTriggerConfigurationFileIfNecessary;
-import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.makeTriggerStorageDirectoriesIfNecessary;
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.recoveryTriggersFromConfigurationFile;
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.registerTriggerToConfigurationFile;
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.removeTriggerFromConfigurationFile;
@@ -48,8 +47,7 @@ public class TriggerStorageService implements IService {
 
   @Override
   public void start() throws StartupException {
-    if (!(makeTriggerStorageDirectoriesIfNecessary()
-        && makeTriggerConfigurationFileIfNecessary())) {
+    if (!makeTriggerConfigurationFileIfNecessary()) {
       throw new StartupException(getID().getName(), "Could not create trigger storage files.");
     }
   }

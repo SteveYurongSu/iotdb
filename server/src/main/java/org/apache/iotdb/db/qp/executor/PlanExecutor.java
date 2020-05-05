@@ -1024,7 +1024,6 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-
   private boolean createTrigger(CreateTriggerPlan plan) throws QueryProcessException {
     try {
       TriggerManager.getInstance()

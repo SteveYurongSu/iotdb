@@ -99,4 +99,11 @@ public class IoTDBConstant {
   public static final String MQTT_PORT_NAME = "mqtt_port";
   public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
+
+  // trigger
+  public static final String TRIGGER_PROPERTY_TRIGGER_DIR = "trigger_dir";
+  public static final String TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE = "async_trigger_execution_pool_size";
+  public static final String TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM = "async_trigger_task_executor_num";
+  public static final String TRIGGER_INSTANCE_FILENAME_EXTENSION = ".jar";
+  public static final String TRIGGER_CONFIGURATION_FILENAME = "triggers.xml";
 }

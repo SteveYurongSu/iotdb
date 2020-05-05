@@ -103,7 +103,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
-    // todo: isEnable
     registerManager.register(TriggerStorageService.getInstance());
     registerManager.register(TriggerManager.getInstance());
     registerManager.register(AsyncTriggerScheduler.getInstance());

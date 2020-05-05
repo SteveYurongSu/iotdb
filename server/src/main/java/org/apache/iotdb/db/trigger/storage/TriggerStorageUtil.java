@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.trigger.storage;
 
-import static org.apache.iotdb.db.trigger.storage.TriggerStorageConstant.TRIGGER_BASE_DIRECTORY;
-import static org.apache.iotdb.db.trigger.storage.TriggerStorageConstant.TRIGGER_CONFIGURATION_FILENAME;
-import static org.apache.iotdb.db.trigger.storage.TriggerStorageConstant.TRIGGER_INSTANCE_DIRECTORY;
-import static org.apache.iotdb.db.trigger.storage.TriggerStorageConstant.TRIGGER_INSTANCE_FILENAME_EXTENSION;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TRIGGER_INSTANCE_FILENAME_EXTENSION;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -34,6 +31,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.trigger.definition.Trigger;
@@ -58,7 +56,8 @@ public class TriggerStorageUtil {
 
   public static boolean makeTriggerConfigurationFileIfNecessary() {
     boolean result = true;
-    File file = new File(TRIGGER_CONFIGURATION_FILENAME);
+    String filename = IoTDBDescriptor.getInstance().getConfig().getTriggerConfigurationFilename();
+    File file = new File(filename);
     if (!file.exists()) {
       XMLWriter writer = null;
       try {
@@ -66,12 +65,11 @@ public class TriggerStorageUtil {
         document.addElement("triggers");
         OutputFormat format = OutputFormat.createPrettyPrint();
         format.setEncoding("utf-8");
-        writer = new XMLWriter(new FileWriter(TRIGGER_CONFIGURATION_FILENAME), format);
+        writer = new XMLWriter(new FileWriter(filename), format);
         writer.write(document);
         writer.flush();
       } catch (IOException e) {
-        LOGGER.info("Failed to create file {}, because {}", TRIGGER_CONFIGURATION_FILENAME,
-            e.getMessage());
+        LOGGER.info("Failed to create file {}, because {}", filename, e.getMessage());
         result = false;
       } finally {
         try {
@@ -82,36 +80,18 @@ public class TriggerStorageUtil {
         }
       }
     } else {
-      LOGGER.info("File {} already exists.", TRIGGER_CONFIGURATION_FILENAME);
+      LOGGER.info("File {} already exists.", filename);
     }
     return result;
   }
 
-  public static boolean makeTriggerStorageDirectoriesIfNecessary() {
-    String[] checkList = {
-        TRIGGER_BASE_DIRECTORY,
-        TRIGGER_INSTANCE_DIRECTORY,
-    };
-    boolean isSuccessful = true;
-    for (String dir : checkList) {
-      File file = new File(dir);
-      if (!file.exists()) {
-        boolean result = file.mkdirs();
-        isSuccessful = isSuccessful && result;
-        LOGGER.info("Make directory {} {}.", dir, result ? "successfully" : "unsuccessfully");
-      } else {
-        LOGGER.info("Directory {} already exists.", dir);
-      }
-    }
-    return isSuccessful;
-  }
-
   public static List<Trigger> recoveryTriggersFromConfigurationFile()
       throws TriggerInstanceLoadException {
+    String filename = IoTDBDescriptor.getInstance().getConfig().getTriggerConfigurationFilename();
     List<Trigger> triggers = new ArrayList<>();
     SAXReader reader = new SAXReader();
     try {
-      Document document = reader.read(new File(TRIGGER_CONFIGURATION_FILENAME));
+      Document document = reader.read(new File(filename));
       Element root = document.getRootElement();
       for (Element element : root.elements()) {
         TriggerParameterConfiguration[] parameterConfigurations = parseTriggerParameterConfigurationFromHookElement(
@@ -124,18 +104,19 @@ public class TriggerStorageUtil {
       }
     } catch (DocumentException e) {
       throw new TriggerInstanceLoadException(String
-          .format("Failed to read trigger configuration file: %s, because %s",
-              TRIGGER_CONFIGURATION_FILENAME, e.getMessage()));
+          .format("Failed to read trigger configuration file: %s, because %s", filename,
+              e.getMessage()));
     }
     return triggers;
   }
 
   public static void registerTriggerToConfigurationFile(Trigger trigger)
       throws TriggerManagementException {
+    String filename = IoTDBDescriptor.getInstance().getConfig().getTriggerConfigurationFilename();
     SAXReader reader = new SAXReader();
     XMLWriter writer = null;
     try {
-      Document document = reader.read(new File(TRIGGER_CONFIGURATION_FILENAME));
+      Document document = reader.read(new File(filename));
       Element root = document.getRootElement();
       if (triggerWithTheSameIdOrSyncTypeHasAlreadyBeenRegistered(trigger, root.elements())) {
         throw new TriggerManagementException(
@@ -161,13 +142,13 @@ public class TriggerStorageUtil {
 
       OutputFormat format = OutputFormat.createPrettyPrint();
       format.setEncoding("utf-8");
-      writer = new XMLWriter(new FileWriter(TRIGGER_CONFIGURATION_FILENAME), format);
+      writer = new XMLWriter(new FileWriter(filename), format);
       writer.write(document);
       writer.flush();
     } catch (DocumentException | IOException e) {
-      throw new TriggerManagementException(
-          String.format("Failed to register %s to file: %s, because %s",
-              trigger.toString(), TRIGGER_CONFIGURATION_FILENAME, e.getMessage()));
+      throw new TriggerManagementException(String
+          .format("Failed to register %s to file: %s, because %s", trigger.toString(), filename,
+              e.getMessage()));
     } finally {
       try {
         if (writer != null) {
@@ -180,10 +161,11 @@ public class TriggerStorageUtil {
 
   public static void removeTriggerFromConfigurationFile(Trigger trigger)
       throws TriggerManagementException {
+    String filename = IoTDBDescriptor.getInstance().getConfig().getTriggerConfigurationFilename();
     SAXReader reader = new SAXReader();
     XMLWriter writer = null;
     try {
-      Document document = reader.read(new File(TRIGGER_CONFIGURATION_FILENAME));
+      Document document = reader.read(new File(filename));
       Element root = document.getRootElement();
       if (!doTriggerRemovalInElements(trigger, root.elements())) {
         return;
@@ -191,13 +173,13 @@ public class TriggerStorageUtil {
 
       OutputFormat format = OutputFormat.createPrettyPrint();
       format.setEncoding("utf-8");
-      writer = new XMLWriter(new FileWriter(TRIGGER_CONFIGURATION_FILENAME), format);
+      writer = new XMLWriter(new FileWriter(filename), format);
       writer.write(document);
       writer.flush();
     } catch (DocumentException | IOException e) {
-      throw new TriggerManagementException(
-          String.format("Failed to remove %s from file: %s, because %s",
-              trigger.toString(), TRIGGER_CONFIGURATION_FILENAME, e.getMessage()));
+      throw new TriggerManagementException(String
+          .format("Failed to remove %s from file: %s, because %s", trigger.toString(), filename,
+              e.getMessage()));
     } finally {
       try {
         if (writer != null) {
@@ -237,7 +219,7 @@ public class TriggerStorageUtil {
   }
 
   private static String getTriggerInstanceJarFilepathByClassName(String className) {
-    return TRIGGER_INSTANCE_DIRECTORY + File.separator + className
+    return IoTDBDescriptor.getInstance().getConfig().getTriggerDir() + File.separator + className
         + TRIGGER_INSTANCE_FILENAME_EXTENSION;
   }
 

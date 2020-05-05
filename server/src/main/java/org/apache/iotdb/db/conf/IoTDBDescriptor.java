@@ -376,7 +376,7 @@ public class IoTDBDescriptor {
               String.valueOf(conf.getDefaultFillInterval()))));
 
       conf.setTagAttributeTotalSize(
-           Integer.parseInt(properties.getProperty("tag_attribute_total_size",
+          Integer.parseInt(properties.getProperty("tag_attribute_total_size",
               String.valueOf(conf.getTagAttributeTotalSize())))
       );
 
@@ -388,15 +388,37 @@ public class IoTDBDescriptor {
         conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
       }
       if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
-        conf.setMqttHandlerPoolSize(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
+        conf.setMqttHandlerPoolSize(
+            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
       }
       if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
-        conf.setMqttPayloadFormatter(properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
+        conf.setMqttPayloadFormatter(
+            properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
       }
       if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
-        conf.setEnableMQTTService(Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
+        conf.setEnableMQTTService(
+            Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
-      
+
+      // trigger module
+      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_TRIGGER_DIR) != null) {
+        conf.setTriggerDir(properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_TRIGGER_DIR));
+      }
+      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE)
+          != null) {
+        int asyncTriggerExecutionPoolSize = Integer.parseInt(properties
+            .getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE));
+        conf.setAsyncTriggerExecutionPoolSize(
+            asyncTriggerExecutionPoolSize <= 0 ? 1 : asyncTriggerExecutionPoolSize);
+      }
+      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM)
+          != null) {
+        int asyncTriggerTaskExecutionNum = Integer.parseInt(
+            properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM));
+        conf.setAsyncTriggerTaskExecutorNum(
+            asyncTriggerTaskExecutionNum <= 0 ? 1 : asyncTriggerTaskExecutionNum);
+      }
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(

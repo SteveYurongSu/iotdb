@@ -25,6 +25,5 @@ public class TriggerManagementException extends TriggerException {
 
   public TriggerManagementException(String message) {
     super(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-    // super(message, TSStatusCode.TRIGGER_MANAGEMENT_ERROR.getStatusCode());
   }
 }
