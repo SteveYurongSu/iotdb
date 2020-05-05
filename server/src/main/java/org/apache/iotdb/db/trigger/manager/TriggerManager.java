@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.trigger.manager;
 
 import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_BATCH_INSERT;
-import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_BATCH_INSERT;
 import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_DELETE;
 import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_INSERT;
+import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_BATCH_INSERT;
 import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_DELETE;
 import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_INSERT;
 
@@ -40,8 +40,8 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 import org.apache.iotdb.db.trigger.async.AsyncTriggerScheduler;
+import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.db.trigger.definition.SyncTrigger;
 import org.apache.iotdb.db.trigger.definition.SyncTriggerExecutionResult;
@@ -93,18 +93,18 @@ public class TriggerManager implements IService {
   /**
    * DOCUMENT ME! stringValues in insertPlan may be modified here.
    */
-  public SyncTriggerExecutionResult fireBeforeInsert(Path[] paths, long timestamp,
+  public SyncTriggerExecutionResult fireBeforeInsert(List<Path> paths, long timestamp,
       TSDataType[] tsDataTypes, String[] stringValues) {
     // fire sync triggers
     SyncTriggerExecutionResult result = SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
-    for (int i = 0; i < paths.length; ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
       if (syncTrigger == null || !syncTrigger.isActive() || !BEFORE_INSERT
           .isEnabled(syncTrigger.getEnabledHooks())) {
         continue;
       }
       DataPoint dataPoint = DataPoint
-          .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]);
+          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]);
       SyncTriggerExecutionResult executionResult = syncTrigger.beforeInsert(timestamp, dataPoint);
       if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
         result = SyncTriggerExecutionResult.SKIP;
@@ -116,14 +116,15 @@ public class TriggerManager implements IService {
     }
 
     // fire async triggers
-    for (int i = 0; i < paths.length; ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
+          .get(paths.get(i).getFullPath());
       if (asyncTrigger == null || !asyncTrigger.isActive() || !BEFORE_INSERT
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;
       }
       Object value = DataPoint
-          .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]).getValue();
+          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]).getValue();
       AsyncTriggerScheduler.getInstance()
           .submit(new AsyncTriggerTask(asyncTrigger, BEFORE_INSERT, timestamp, value, null, null));
     }
@@ -131,29 +132,30 @@ public class TriggerManager implements IService {
     return result;
   }
 
-  public void fireAfterInsert(Path[] paths, long timestamp, TSDataType[] tsDataTypes,
+  public void fireAfterInsert(List<Path> paths, long timestamp, TSDataType[] tsDataTypes,
       String[] stringValues) {
     // fire sync triggers
-    for (int i = 0; i < paths.length; ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
       if (syncTrigger == null || !syncTrigger.isActive() || !AFTER_INSERT
           .isEnabled(syncTrigger.getEnabledHooks())) {
         continue;
       }
       DataPoint dataPoint = DataPoint
-          .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]);
+          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]);
       syncTrigger.afterInsert(timestamp, dataPoint.getValue());
     }
 
     // fire async triggers
-    for (int i = 0; i < paths.length; ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
+          .get(paths.get(i).getFullPath());
       if (asyncTrigger == null || !asyncTrigger.isActive() || !AFTER_INSERT
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;
       }
       Object value = DataPoint
-          .getDataPoint(tsDataTypes[i], paths[i].getMeasurement(), stringValues[i]).getValue();
+          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]).getValue();
       AsyncTriggerScheduler.getInstance()
           .submit(new AsyncTriggerTask(asyncTrigger, AFTER_INSERT, timestamp, value, null, null));
     }
@@ -197,12 +199,12 @@ public class TriggerManager implements IService {
   }
 
   //! times should be sorted.
-  public SyncTriggerExecutionResult fireBeforeBatchInsert(Path[] paths, long[] timestamps,
+  public SyncTriggerExecutionResult fireBeforeBatchInsert(List<Path> paths, long[] timestamps,
       Object[] values) {
     // fire sync triggers
     SyncTriggerExecutionResult result = SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
-    for (int i = 0; i < paths.length; ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
       if (syncTrigger == null || !syncTrigger.isActive() || !BEFORE_BATCH_INSERT
           .isEnabled(syncTrigger.getEnabledHooks())) {
         continue;
@@ -218,8 +220,9 @@ public class TriggerManager implements IService {
     }
 
     // fire async triggers
-    for (int i = 0; i < paths.length; ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
+          .get(paths.get(i).getFullPath());
       if (asyncTrigger == null || !asyncTrigger.isActive() || !BEFORE_BATCH_INSERT
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;
@@ -233,10 +236,10 @@ public class TriggerManager implements IService {
   }
 
   // modify timestamps in after methods may cause undefine behavior.
-  public void fireAfterBatchInsert(Path[] paths, long[] timestamps, Object[] values) {
+  public void fireAfterBatchInsert(List<Path> paths, long[] timestamps, Object[] values) {
     // fire sync triggers
-    for (int i = 0; i < paths.length; ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
       if (syncTrigger == null || !syncTrigger.isActive() || !AFTER_BATCH_INSERT
           .isEnabled(syncTrigger.getEnabledHooks())) {
         continue;
@@ -245,8 +248,9 @@ public class TriggerManager implements IService {
     }
 
     // fire async triggers
-    for (int i = 0; i < paths.length; ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(paths[i].getFullPath());
+    for (int i = 0; i < paths.size(); ++i) {
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
+          .get(paths.get(i).getFullPath());
       if (asyncTrigger == null || !asyncTrigger.isActive() || !AFTER_BATCH_INSERT
           .isEnabled(asyncTrigger.getEnabledHooks())) {
         continue;

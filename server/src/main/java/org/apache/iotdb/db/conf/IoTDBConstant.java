@@ -92,6 +92,7 @@ public class IoTDBConstant {
   public static final String SCHEMA_FOLDER_NAME = "schema";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
+  public static final String TRIGGER_FOLDER_NAME = "trigger";
 
   // mqtt  
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -101,7 +102,6 @@ public class IoTDBConstant {
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
 
   // trigger
-  public static final String TRIGGER_PROPERTY_TRIGGER_DIR = "trigger_dir";
   public static final String TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE = "async_trigger_execution_pool_size";
   public static final String TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM = "async_trigger_task_executor_num";
   public static final String TRIGGER_INSTANCE_FILENAME_EXTENSION = ".jar";

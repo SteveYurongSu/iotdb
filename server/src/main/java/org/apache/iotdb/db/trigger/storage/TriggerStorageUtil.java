@@ -32,6 +32,7 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.trigger.definition.Trigger;
@@ -49,13 +50,24 @@ import org.slf4j.LoggerFactory;
 
 public class TriggerStorageUtil {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerStorageUtil.class);
+  private static final Logger logger = LoggerFactory.getLogger(TriggerStorageUtil.class);
 
   private TriggerStorageUtil() {
   }
 
-  public static boolean makeTriggerConfigurationFileIfNecessary() {
-    boolean result = true;
+  public static void makeTriggerDirectoryIfNecessary() {
+    String triggerDir = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
+    File triggerFolder = SystemFileFactory.INSTANCE.getFile(triggerDir);
+    if (!triggerFolder.exists()) {
+      if (triggerFolder.mkdirs()) {
+        logger.info("create folder {} successfully.", triggerFolder.getAbsolutePath());
+      } else {
+        logger.info("create folder {} failed.", triggerFolder.getAbsolutePath());
+      }
+    }
+  }
+
+  public static void makeTriggerConfigurationFileIfNecessary() throws IOException {
     String filename = IoTDBDescriptor.getInstance().getConfig().getTriggerConfigurationFilename();
     File file = new File(filename);
     if (!file.exists()) {
@@ -68,9 +80,6 @@ public class TriggerStorageUtil {
         writer = new XMLWriter(new FileWriter(filename), format);
         writer.write(document);
         writer.flush();
-      } catch (IOException e) {
-        LOGGER.info("Failed to create file {}, because {}", filename, e.getMessage());
-        result = false;
       } finally {
         try {
           if (writer != null) {
@@ -80,9 +89,8 @@ public class TriggerStorageUtil {
         }
       }
     } else {
-      LOGGER.info("File {} already exists.", filename);
+      logger.info("File {} already exists.", filename);
     }
-    return result;
   }
 
   public static List<Trigger> recoveryTriggersFromConfigurationFile()

@@ -31,7 +31,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -165,6 +164,8 @@ public class EnvironmentUtils {
     // delete query
     cleanDir(config.getQueryDir());
     cleanDir(config.getBaseDir());
+    // delete trigger
+    cleanDir(config.getTriggerDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -251,6 +252,8 @@ public class EnvironmentUtils {
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
+    // create trigger
+    createDir(config.getTriggerDir());
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);

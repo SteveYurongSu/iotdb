@@ -463,7 +463,7 @@ public class PlanExecutor implements IPlanExecutor {
       dataTypes.add(TSDataType.TEXT);
     }
     ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
-    
+
     List<Trigger> triggers = TriggerManager.getInstance()
         .show(showPlan.getPath(), showPlan.showSyncTriggerOrNot(),
             showPlan.showAsyncTriggerOrNot());
@@ -831,7 +831,6 @@ public class PlanExecutor implements IPlanExecutor {
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
       String[] strValues = insertPlan.getValues();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
-      Path[] paths = new Path[measurementList.length];
       TSDataType[] tsDataTypes = new TSDataType[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
@@ -840,23 +839,23 @@ public class PlanExecutor implements IPlanExecutor {
           if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           }
-          tsDataTypes[i] = TypeInferenceUtils.getPredictedDataType(strValues[i]);
-          paths[i] = new Path(deviceId, measurement);
-          internalCreateTimeseries(paths[i].toString(), tsDataTypes[i]);
+          internalCreateTimeseries(insertPlan.getPaths().get(i).getFullPath(),
+              TypeInferenceUtils.getPredictedDataType(strValues[i]));
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
+        tsDataTypes[i] = measurementNode.getSchema().getType();
       }
       insertPlan.setSchemas(schemas);
 
       SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
-          .fireBeforeInsert(paths, insertPlan.getTime(), tsDataTypes, strValues);
+          .fireBeforeInsert(insertPlan.getPaths(), insertPlan.getTime(), tsDataTypes, strValues);
       if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
         return;
       }
       StorageEngine.getInstance().insert(insertPlan);
       TriggerManager.getInstance()
-          .fireAfterInsert(paths, insertPlan.getTime(), tsDataTypes, strValues);
+          .fireAfterInsert(insertPlan.getPaths(), insertPlan.getTime(), tsDataTypes, strValues);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -908,8 +907,6 @@ public class PlanExecutor implements IPlanExecutor {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
-      TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
-      Path[] paths = new Path[measurementList.length];
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
@@ -920,8 +917,8 @@ public class PlanExecutor implements IPlanExecutor {
                 String.format("Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          paths[i] = new Path(deviceId, measurementList[i]);
-          internalCreateTimeseries(paths[i].getFullPath(), dataTypes[i]);
+          internalCreateTimeseries(new Path(deviceId, measurementList[i]).getFullPath(),
+              batchInsertPlan.getDataTypes()[i]);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
 
@@ -939,13 +936,15 @@ public class PlanExecutor implements IPlanExecutor {
       TSStatus[] tsStatuses = new TSStatus[batchInsertPlan.getRowCount()];
       Arrays.fill(tsStatuses, RpcUtils.SUCCESS_STATUS);
       SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
-          .fireBeforeBatchInsert(paths, batchInsertPlan.getTimes(), batchInsertPlan.getColumns());
+          .fireBeforeBatchInsert(batchInsertPlan.getPaths(), batchInsertPlan.getTimes(),
+              batchInsertPlan.getColumns());
       if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
         return tsStatuses;
       }
       tsStatuses = StorageEngine.getInstance().insertBatch(batchInsertPlan);
       TriggerManager.getInstance()
-          .fireAfterBatchInsert(paths, batchInsertPlan.getTimes(), batchInsertPlan.getColumns());
+          .fireAfterBatchInsert(batchInsertPlan.getPaths(), batchInsertPlan.getTimes(),
+              batchInsertPlan.getColumns());
       return tsStatuses;
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

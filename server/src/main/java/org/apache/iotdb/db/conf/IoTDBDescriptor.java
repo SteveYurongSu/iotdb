@@ -204,6 +204,9 @@ public class IoTDBDescriptor {
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
+      conf.setTriggerDir(
+          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.TRIGGER_FOLDER_NAME);
+
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
@@ -401,9 +404,6 @@ public class IoTDBDescriptor {
       }
 
       // trigger module
-      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_TRIGGER_DIR) != null) {
-        conf.setTriggerDir(properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_TRIGGER_DIR));
-      }
       if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE)
           != null) {
         int asyncTriggerExecutionPoolSize = Integer.parseInt(properties

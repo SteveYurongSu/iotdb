@@ -179,6 +179,11 @@ public class IoTDBConfig {
   private String queryDir = "data" + File.separator + "query";
 
   /**
+   * Trigger directory.
+   */
+  private String triggerDir = "data" + File.separator + "trigger";
+
+  /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -536,11 +541,6 @@ public class IoTDBConfig {
 
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
-
-  /**
-   * Trigger directory.
-   */
-  private String triggerDir = "data" + File.separator + "trigger";
 
   /**
    * The execution pool size for async trigger tasks execution.
