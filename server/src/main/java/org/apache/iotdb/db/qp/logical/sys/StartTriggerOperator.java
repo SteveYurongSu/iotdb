@@ -27,6 +27,7 @@ public class StartTriggerOperator extends RootOperator {
 
   public StartTriggerOperator(int tokenIntType) {
     super(tokenIntType);
+    operatorType = OperatorType.START_TRIGGER;
   }
 
   public void setId(String id) {

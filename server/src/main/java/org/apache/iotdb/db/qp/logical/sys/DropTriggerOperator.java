@@ -27,6 +27,7 @@ public class DropTriggerOperator extends RootOperator {
 
   public DropTriggerOperator(int tokenIntType) {
     super(tokenIntType);
+    operatorType = OperatorType.DROP_TRIGGER;
   }
 
   public void setId(String id) {

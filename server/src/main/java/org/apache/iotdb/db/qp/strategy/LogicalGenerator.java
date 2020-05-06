@@ -1137,13 +1137,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterTriggerAttributeClause(TriggerAttributeClauseContext ctx) {
     CreateTriggerOperator operator = (CreateTriggerOperator) initializedOperator;
-    operator.setClassName(ctx.className.getText());
+    String classNameWithQuotes = ctx.className.getText();
+    operator.setClassName(classNameWithQuotes.substring(1, classNameWithQuotes.length() - 1));
   }
 
   @Override
   public void enterKeyValuePair(KeyValuePairContext ctx) {
     CreateTriggerOperator operator = (CreateTriggerOperator) initializedOperator;
-    operator.addParameter(ctx.key.getText(), ctx.value.getText()); // todo: check
+    operator.addParameter(ctx.key.getText(), ctx.value.getText());
   }
 
   @Override

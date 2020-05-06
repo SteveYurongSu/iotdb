@@ -210,9 +210,9 @@ public class TriggerStorageUtil {
   public static Trigger createTriggerInstanceFromJar(String className, String path,
       String id, int enabledHooks, TriggerParameterConfiguration[] parameterConfigurations,
       boolean isActive) throws TriggerInstanceLoadException {
+    URL url = null;
     try {
-      URL url = new URL(String
-          .format("file:%s", getTriggerInstanceJarFilepathByClassName(className)));
+      url = getTriggerInstanceJarFileURLByClassName(className);
       URLClassLoader classLoader = new URLClassLoader(new URL[]{url}, Thread.currentThread()
           .getContextClassLoader());
       Class<?> triggerClass = classLoader.loadClass(className);
@@ -223,15 +223,18 @@ public class TriggerStorageUtil {
     } catch (ClassNotFoundException | MalformedURLException | IllegalAccessException
         | InstantiationException | InvocationTargetException | NoSuchMethodException e) {
       throw new TriggerInstanceLoadException(String.format(
-          "Failed to load Trigger(Path: %s, ID: %s, IsActive: %s, ClassName: %s) from file: %s, because %s",
-          path, id, isActive ? "true" : "false", className,
-          getTriggerInstanceJarFilepathByClassName(className), e.getMessage()));
+          "Failed to load Trigger(Path: %s, ID: %s, IsActive: %s, ClassName: %s) from %s, because %s",
+          path, id, isActive ? "true" : "false", className, url == null ? "null" : url.getPath(),
+          e.getMessage()));
     }
   }
 
-  private static String getTriggerInstanceJarFilepathByClassName(String className) {
-    return IoTDBDescriptor.getInstance().getConfig().getTriggerDir() + File.separator + className
-        + TRIGGER_INSTANCE_FILENAME_EXTENSION;
+  private static URL getTriggerInstanceJarFileURLByClassName(String className)
+      throws MalformedURLException {
+    File jarFile = new File(
+        IoTDBDescriptor.getInstance().getConfig().getTriggerDir() + File.separator + className
+            + TRIGGER_INSTANCE_FILENAME_EXTENSION);
+    return jarFile.getAbsoluteFile().toURI().toURL();
   }
 
   private static boolean triggerWithTheSameIdOrSyncTypeHasAlreadyBeenRegistered(Trigger trigger,

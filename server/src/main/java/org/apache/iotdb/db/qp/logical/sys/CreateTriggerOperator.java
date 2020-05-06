@@ -83,10 +83,15 @@ public class CreateTriggerOperator extends RootOperator {
 
   public int getEnabledHooks() {
     // default 'ON ALL EVENTS'
-    return enabledHooks == 0B0 ? ~0B0 : enabledHooks;
+    return enabledHooks == 0B0 ? HookID.ON_ALL_EVENTS.getId() : enabledHooks;
   }
 
   public TriggerParameterConfiguration[] getParameterConfigurations() {
-    return (TriggerParameterConfiguration[]) parameterConfigurations.toArray();
+    TriggerParameterConfiguration[] ret = new TriggerParameterConfiguration[parameterConfigurations
+        .size()];
+    for (int i = 0; i < parameterConfigurations.size(); ++i) {
+      ret[i] = parameterConfigurations.get(i);
+    }
+    return ret;
   }
 }
