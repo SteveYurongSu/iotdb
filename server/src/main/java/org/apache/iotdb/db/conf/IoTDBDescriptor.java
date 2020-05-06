@@ -207,7 +207,7 @@ public class IoTDBDescriptor {
           FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
       conf.setTriggerDir(
-          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.TRIGGER_FOLDER_NAME);
+          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.TRIGGER_FOLDER_NAME);
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));

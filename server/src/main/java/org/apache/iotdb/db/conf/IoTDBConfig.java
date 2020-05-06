@@ -180,14 +180,14 @@ public class IoTDBConfig {
   private String syncDir = "data" + File.separator + "system" + File.separator + "sync";
 
   /**
+   * Trigger directory.
+   */
+  private String triggerDir = "data" + File.separator + "system" + File.separator + "trigger";
+
+  /**
    * Query directory, stores temporary files of query
    */
   private String queryDir = "data" + File.separator + "query";
-
-  /**
-   * Trigger directory.
-   */
-  private String triggerDir = "data" + File.separator + "trigger";
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
