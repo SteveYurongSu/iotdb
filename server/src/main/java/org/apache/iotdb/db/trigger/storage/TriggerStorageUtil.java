@@ -55,14 +55,16 @@ public class TriggerStorageUtil {
   private TriggerStorageUtil() {
   }
 
-  public static void makeTriggerDirectoryIfNecessary() {
+  public static void makeTriggerDirectoryIfNecessary() throws IOException {
     String triggerDir = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
     File triggerFolder = SystemFileFactory.INSTANCE.getFile(triggerDir);
     if (!triggerFolder.exists()) {
       if (triggerFolder.mkdirs()) {
-        logger.info("create folder {} successfully.", triggerFolder.getAbsolutePath());
+        logger.info("Folder {} was created successfully.", triggerFolder.getAbsolutePath());
       } else {
-        logger.info("create folder {} failed.", triggerFolder.getAbsolutePath());
+        logger.error("Failed to create folder {}.", triggerFolder.getAbsolutePath());
+        throw new IOException(String.format("Failed to create folder %s.",
+            triggerFolder.getAbsolutePath()));
       }
     }
   }
@@ -80,6 +82,7 @@ public class TriggerStorageUtil {
         writer = new XMLWriter(new FileWriter(filename), format);
         writer.write(document);
         writer.flush();
+        logger.info("File {} was created successfully.", filename);
       } finally {
         try {
           if (writer != null) {
