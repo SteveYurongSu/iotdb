@@ -32,10 +32,17 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ENABLED_HOOKS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ID;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_SYNC_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -89,6 +96,13 @@ class StaticResps {
   static final TSExecuteStatementResp SHOW_CHILD_PATHS = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_CHILD_PATHS),
       Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp SHOW_TRIGGERS = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_TRIGGER_ID, COLUMN_TRIGGER_PATH, COLUMN_TRIGGER_SYNC_TYPE,
+          COLUMN_TRIGGER_ENABLED_HOOKS, COLUMN_TRIGGER_CLASS_NAME, COLUMN_TRIGGER_STATUS),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp COUNT_TIMESERIES = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),

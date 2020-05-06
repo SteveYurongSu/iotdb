@@ -532,12 +532,12 @@ public class PlanExecutor implements IPlanExecutor {
             showPlan.showAsyncTriggerOrNot());
     triggers.forEach((Trigger trigger) -> {
       RowRecord record = new RowRecord(0);
-      record.addField(trigger.getId(), TSDataType.TEXT);
-      record.addField(trigger.getPath(), TSDataType.TEXT);
-      record.addField(trigger.isSynced() ? "SYNC" : "ASYNC", TSDataType.TEXT);
-      record.addField(HookID.show(trigger.getEnabledHooks()), TSDataType.TEXT);
-      record.addField(trigger.getClass().getName(), TSDataType.TEXT);
-      record.addField(trigger.isActive() ? "STARTED" : "STOPPED", TSDataType.TEXT);
+      updateRecord(record, trigger.getId());
+      updateRecord(record, trigger.getPath());
+      updateRecord(record, trigger.isSynced() ? "SYNC" : "ASYNC");
+      updateRecord(record, HookID.show(trigger.getEnabledHooks()));
+      updateRecord(record, trigger.getClass().getName());
+      updateRecord(record, trigger.isActive() ? "STARTED" : "STOPPED");
       listDataSet.putRecord(record);
     });
     return listDataSet;

@@ -262,6 +262,32 @@ public class TriggerManager implements IService {
     }
   }
 
+  public List<Trigger> show(String path, boolean showSyncTrigger, boolean showAsyncTrigger) {
+    List<Trigger> triggers = new ArrayList<>();
+    if (path == null) {
+      if (showSyncTrigger) {
+        triggers.addAll(pathToSyncTriggers.values());
+      }
+      if (showAsyncTrigger) {
+        triggers.addAll(pathToAsyncTriggers.values());
+      }
+    } else {
+      if (showSyncTrigger) {
+        Trigger trigger = pathToSyncTriggers.get(path);
+        if (trigger != null) {
+          triggers.add(trigger);
+        }
+      }
+      if (showAsyncTrigger) {
+        Trigger trigger = pathToAsyncTriggers.get(path);
+        if (trigger != null) {
+          triggers.add(trigger);
+        }
+      }
+    }
+    return triggers;
+  }
+
   public void create(String className, String path, String id, int enabledHooks,
       TriggerParameterConfiguration[] parameterConfigurations)
       throws TriggerInstanceLoadException, TriggerManagementException, MetadataException {
@@ -269,12 +295,13 @@ public class TriggerManager implements IService {
     Trigger trigger = TriggerStorageService.getInstance()
         .createTrigger(className, path, id, enabledHooks, parameterConfigurations);
     trigger.beforeStart();
-    idToTriggers.put(trigger.getId(), trigger);
     if (trigger.isSynced()) {
       pathToSyncTriggers.put(trigger.getPath(), trigger);
     } else {
+      AsyncTriggerScheduler.getInstance().beforeTriggerStart((AsyncTrigger) trigger);
       pathToAsyncTriggers.put(trigger.getPath(), trigger);
     }
+    idToTriggers.put(trigger.getId(), trigger);
   }
 
   public void start(String id) throws TriggerManagementException, TriggerInstanceLoadException {
@@ -322,6 +349,9 @@ public class TriggerManager implements IService {
     if (trigger.isActive()) {
       trigger.markAsInactive();
       trigger.afterStop();
+      if (!trigger.isSynced()) {
+        AsyncTriggerScheduler.getInstance().afterTriggerStop((AsyncTrigger) trigger);
+      }
     }
     TriggerStorageService.getInstance().removeTrigger(trigger);
     idToTriggers.remove(id);
@@ -330,32 +360,6 @@ public class TriggerManager implements IService {
     } else {
       pathToAsyncTriggers.remove(trigger.getPath());
     }
-  }
-
-  public List<Trigger> show(String path, boolean showSyncTrigger, boolean showAsyncTrigger) {
-    List<Trigger> triggers = new ArrayList<>();
-    if (path == null) {
-      if (showSyncTrigger) {
-        triggers.addAll(pathToSyncTriggers.values());
-      }
-      if (showAsyncTrigger) {
-        triggers.addAll(pathToAsyncTriggers.values());
-      }
-    } else {
-      if (showSyncTrigger) {
-        Trigger trigger = pathToSyncTriggers.get(path);
-        if (trigger != null) {
-          triggers.add(trigger);
-        }
-      }
-      if (showAsyncTrigger) {
-        Trigger trigger = pathToAsyncTriggers.get(path);
-        if (trigger != null) {
-          triggers.add(trigger);
-        }
-      }
-    }
-    return triggers;
   }
 
   public void removeByPath(String path) throws TriggerManagementException {
@@ -374,6 +378,9 @@ public class TriggerManager implements IService {
     if (trigger.isActive()) {
       trigger.markAsInactive();
       trigger.afterStop();
+      if (!trigger.isSynced()) {
+        AsyncTriggerScheduler.getInstance().afterTriggerStop((AsyncTrigger) trigger);
+      }
     }
     TriggerStorageService.getInstance().removeTrigger(trigger);
     idToTriggers.remove(trigger.getId());

@@ -428,7 +428,7 @@ triggerEvent
     ;
 
 triggerAttributeClause
-    : CLASSNAME OPERATOR_EQ className=suffixPath triggerParameterClause?
+    : CLASSNAME OPERATOR_EQ className=STRING_LITERAL triggerParameterClause?
     ;
 
 triggerParameterClause

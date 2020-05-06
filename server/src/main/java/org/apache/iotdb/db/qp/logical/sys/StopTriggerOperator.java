@@ -27,6 +27,7 @@ public class StopTriggerOperator extends RootOperator {
 
   public StopTriggerOperator(int tokenIntType) {
     super(tokenIntType);
+    operatorType = OperatorType.STOP_TRIGGER;
   }
 
   public void setId(String id) {

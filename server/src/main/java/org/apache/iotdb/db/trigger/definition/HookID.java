@@ -24,17 +24,17 @@ import java.util.List;
 
 public enum HookID {
 
-  BEFORE_INSERT      (0B00000001),
-  BEFORE_DELETE      (0B00000010),
-  BEFORE_UPDATE      (0B00000100),
+  BEFORE_INSERT(0B00000001),
+  BEFORE_DELETE(0B00000010),
+  BEFORE_UPDATE(0B00000100),
   BEFORE_BATCH_INSERT(0B00001000),
 
-  AFTER_INSERT       (0B00010000),
-  AFTER_DELETE       (0B00100000),
-  AFTER_UPDATE       (0B01000000),
-  AFTER_BATCH_INSERT (0B10000000),
+  AFTER_INSERT(0B00010000),
+  AFTER_DELETE(0B00100000),
+  AFTER_UPDATE(0B01000000),
+  AFTER_BATCH_INSERT(0B10000000),
 
-  ON_ALL_EVENTS      (~0B0),
+  ON_ALL_EVENTS(~0B0),
   ;
 
   private final int id;
@@ -43,6 +43,12 @@ public enum HookID {
     this.id = id;
   }
 
+  /**
+   * Test if the enabled hooks contains the hook marked by {@link HookID#id}.
+   * Due to performance considerations, it cannot be used for testing {@link HookID#ON_ALL_EVENTS}.
+   * @param enabledHooks the enabled hooks
+   * @return whether the hook is enabled
+   */
   public boolean isEnabled(int enabledHooks) {
     return 0 < (id & enabledHooks);
   }
@@ -58,6 +64,8 @@ public enum HookID {
         enabledHookNames.add(hookID.name());
       }
     }
-    return String.join(" | ", enabledHookNames);
+    enabledHookNames.remove(ON_ALL_EVENTS.name());
+    return enabledHookNames.size() == values().length - 1 ? ON_ALL_EVENTS.name()
+        : String.join(" | ", enabledHookNames);
   }
 }

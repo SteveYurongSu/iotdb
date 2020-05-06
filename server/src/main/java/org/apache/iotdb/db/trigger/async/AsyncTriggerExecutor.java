@@ -37,16 +37,22 @@ public class AsyncTriggerExecutor {
     switch (task.getHookID()) {
       case BEFORE_INSERT:
         handler.beforeInsert(task.getTimestamp(), task.getValue());
+        return;
       case AFTER_INSERT:
         handler.afterInsert(task.getTimestamp(), task.getValue());
+        return;
       case BEFORE_BATCH_INSERT:
         handler.beforeBatchInsert(task.getTimestamps(), task.getValues());
+        return;
       case AFTER_BATCH_INSERT:
         handler.afterBatchInsert(task.getTimestamps(), task.getValues());
+        return;
       case BEFORE_DELETE:
         handler.beforeDelete(task.getTimestamp());
+        return;
       case AFTER_DELETE:
         handler.afterDelete(task.getTimestamp());
+        return;
       default:
         throw new UnsupportedOperationException("Unsupported async trigger task.");
     }
