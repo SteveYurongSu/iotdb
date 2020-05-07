@@ -59,11 +59,59 @@ public class AsyncTriggerTask {
     return value;
   }
 
+  public String getStringValue() {
+    return (String) value;
+  }
+
+  public Integer getIntegerValue() {
+    return (Integer) value;
+  }
+
+  public Long getLongValue() {
+    return (Long) value;
+  }
+
+  public Boolean getBooleanValue() {
+    return (Boolean) value;
+  }
+
+  public Float getFloatValue() {
+    return (Float) value;
+  }
+
+  public Double getDoubleValue(String name) {
+    return (Double) value;
+  }
+
   public long[] getTimestamps() {
     return timestamps;
   }
 
   public Object[] getValues() {
     return values;
+  }
+
+  public String[] getStringValues() {
+    return (String[]) values;
+  }
+
+  public Integer[] getIntegerValues() {
+    return (Integer[]) values;
+  }
+
+  public Long[] getLongValues() {
+    return (Long[]) values;
+  }
+
+  public Boolean[] getBooleanValues() {
+    return (Boolean[]) values;
+  }
+
+  public Float[] getFloatValues() {
+    return (Float[]) values;
+  }
+
+  public Double[] getDoubleValues(String name) {
+    return (Double[]) values;
   }
 }
