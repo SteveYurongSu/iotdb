@@ -46,7 +46,7 @@ import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.db.trigger.definition.SyncTrigger;
 import org.apache.iotdb.db.trigger.definition.SyncTriggerExecutionResult;
 import org.apache.iotdb.db.trigger.definition.Trigger;
-import org.apache.iotdb.db.trigger.definition.TriggerParameterConfiguration;
+import org.apache.iotdb.db.trigger.definition.TriggerParameterConfigurations;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -288,7 +288,7 @@ public class TriggerManager implements IService {
   }
 
   public void create(String className, String path, String id, int enabledHooks,
-      TriggerParameterConfiguration[] parameterConfigurations)
+      TriggerParameterConfigurations parameterConfigurations)
       throws TriggerInstanceLoadException, TriggerManagementException, MetadataException {
     checkPath(path);
     Trigger trigger = TriggerStorageService.getInstance()

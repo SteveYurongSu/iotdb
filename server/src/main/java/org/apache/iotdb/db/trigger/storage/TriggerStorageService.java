@@ -36,7 +36,7 @@ import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.trigger.definition.Trigger;
-import org.apache.iotdb.db.trigger.definition.TriggerParameterConfiguration;
+import org.apache.iotdb.db.trigger.definition.TriggerParameterConfigurations;
 
 // todo: undo / redo ?
 public class TriggerStorageService implements IService {
@@ -72,7 +72,7 @@ public class TriggerStorageService implements IService {
    * @param path full path string of the time series. please make sure the time series is existed.
    */
   public Trigger createTrigger(String className, String path, String id, int enabledHooks,
-      TriggerParameterConfiguration[] parameterConfigurations)
+      TriggerParameterConfigurations parameterConfigurations)
       throws TriggerInstanceLoadException, TriggerManagementException {
     lock.lock();
     try {

@@ -23,7 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.trigger.definition.TriggerParameterConfiguration;
+import org.apache.iotdb.db.trigger.definition.TriggerParameterConfigurations;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class CreateTriggerPlan extends PhysicalPlan {
@@ -32,10 +32,10 @@ public class CreateTriggerPlan extends PhysicalPlan {
   private final String path;
   private final String id;
   private final int enabledHooks;
-  private final TriggerParameterConfiguration[] parameterConfigurations;
+  private final TriggerParameterConfigurations parameterConfigurations;
 
   public CreateTriggerPlan(String className, String path, String id, int enabledHooks,
-      TriggerParameterConfiguration[] parameterConfigurations) {
+      TriggerParameterConfigurations parameterConfigurations) {
     super(false, OperatorType.CREATE_TRIGGER);
     this.className = className;
     this.path = path;
@@ -66,7 +66,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
     return enabledHooks;
   }
 
-  public TriggerParameterConfiguration[] getParameterConfigurations() {
+  public TriggerParameterConfigurations getParameterConfigurations() {
     return parameterConfigurations;
   }
 }
