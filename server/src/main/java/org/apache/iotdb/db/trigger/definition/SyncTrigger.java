@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 public abstract class SyncTrigger extends Trigger {
 
   public SyncTrigger(String path, String id, int enabledHooks,
-      TriggerParameterConfiguration[] parameters, boolean isActive) {
+      TriggerParameterConfigurations parameters, boolean isActive) {
     super(path, id, enabledHooks, parameters, isActive);
   }
 

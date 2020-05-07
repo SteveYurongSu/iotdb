@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.trigger.definition.HookID;
-import org.apache.iotdb.db.trigger.definition.TriggerParameterConfiguration;
+import org.apache.iotdb.db.trigger.definition.TriggerParameterConfigurations;
 
 public class CreateTriggerOperator extends RootOperator {
 
@@ -31,17 +29,17 @@ public class CreateTriggerOperator extends RootOperator {
   private String path;
   private String id;
   private int enabledHooks;
-  private List<TriggerParameterConfiguration> parameterConfigurations;
+  private TriggerParameterConfigurations parameterConfigurations;
 
   public CreateTriggerOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.CREATE_TRIGGER;
     enabledHooks = 0B0;
-    parameterConfigurations = new ArrayList<>();
+    parameterConfigurations = new TriggerParameterConfigurations();
   }
 
   public void addParameter(String key, String value) {
-    parameterConfigurations.add(new TriggerParameterConfiguration(key, value));
+    parameterConfigurations.put(key, value);
   }
 
   public void enableHook(HookID hook) {
@@ -65,7 +63,7 @@ public class CreateTriggerOperator extends RootOperator {
   }
 
   public void setParameterConfigurations(
-      List<TriggerParameterConfiguration> parameterConfigurations) {
+      TriggerParameterConfigurations parameterConfigurations) {
     this.parameterConfigurations = parameterConfigurations;
   }
 
@@ -86,12 +84,7 @@ public class CreateTriggerOperator extends RootOperator {
     return enabledHooks == 0B0 ? HookID.ON_ALL_EVENTS.getId() : enabledHooks;
   }
 
-  public TriggerParameterConfiguration[] getParameterConfigurations() {
-    TriggerParameterConfiguration[] ret = new TriggerParameterConfiguration[parameterConfigurations
-        .size()];
-    for (int i = 0; i < parameterConfigurations.size(); ++i) {
-      ret[i] = parameterConfigurations.get(i);
-    }
-    return ret;
+  public TriggerParameterConfigurations getParameterConfigurations() {
+    return parameterConfigurations;
   }
 }

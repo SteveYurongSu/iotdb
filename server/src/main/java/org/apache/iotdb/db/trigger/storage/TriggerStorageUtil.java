@@ -31,12 +31,14 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.trigger.definition.Trigger;
-import org.apache.iotdb.db.trigger.definition.TriggerParameterConfiguration;
+import org.apache.iotdb.db.trigger.definition.TriggerParameterConfigurations;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -105,7 +107,7 @@ public class TriggerStorageUtil {
       Document document = reader.read(new File(filename));
       Element root = document.getRootElement();
       for (Element element : root.elements()) {
-        TriggerParameterConfiguration[] parameterConfigurations = parseTriggerParameterConfigurationFromHookElement(
+        TriggerParameterConfigurations parameterConfigurations = parseTriggerParameterConfigurationFromHookElement(
             element);
         int enabledHooks = Integer.parseInt(element.attribute("enabledHooks").getText());
         boolean isActive = !"false".equals(element.attribute("isActive").getText());
@@ -142,12 +144,14 @@ public class TriggerStorageUtil {
       element.addAttribute("enabledHooks", String.valueOf(trigger.getEnabledHooks()));
       element.addAttribute("isSynced", trigger.isSynced() ? "true" : "false");
       element.addAttribute("isActive", trigger.isActive() ? "true" : "false");
-      if (0 < trigger.getParameters().length) {
+      Set<Entry<String, String>> configurations = trigger.getParameters()
+          .getConfigurationEntrySet();
+      if (0 < configurations.size()) {
         Element parametersElement = element.addElement("parameters");
-        for (TriggerParameterConfiguration parameterConfiguration : trigger.getParameters()) {
+        for (Entry<String, String> configuration : configurations) {
           Element parameterElement = parametersElement.addElement("parameter");
-          parameterElement.addAttribute("name", parameterConfiguration.getName());
-          parameterElement.addAttribute("value", parameterConfiguration.getValue());
+          parameterElement.addAttribute("name", configuration.getKey());
+          parameterElement.addAttribute("value", configuration.getValue());
         }
       }
 
@@ -208,7 +212,7 @@ public class TriggerStorageUtil {
   }
 
   public static Trigger createTriggerInstanceFromJar(String className, String path,
-      String id, int enabledHooks, TriggerParameterConfiguration[] parameterConfigurations,
+      String id, int enabledHooks, TriggerParameterConfigurations parameterConfigurations,
       boolean isActive) throws TriggerInstanceLoadException {
     URL url = null;
     try {
@@ -217,7 +221,7 @@ public class TriggerStorageUtil {
           .getContextClassLoader());
       Class<?> triggerClass = classLoader.loadClass(className);
       Constructor<?> constructor = triggerClass.getConstructor(String.class, String.class,
-          int.class, TriggerParameterConfiguration[].class, boolean.class);
+          int.class, TriggerParameterConfigurations.class, boolean.class);
       return (Trigger) constructor.newInstance(path, id, enabledHooks, parameterConfigurations,
           isActive);
     } catch (ClassNotFoundException | MalformedURLException | IllegalAccessException
@@ -259,20 +263,16 @@ public class TriggerStorageUtil {
     return false;
   }
 
-  private static TriggerParameterConfiguration[] parseTriggerParameterConfigurationFromHookElement(
+  private static TriggerParameterConfigurations parseTriggerParameterConfigurationFromHookElement(
       Element hook) {
-    TriggerParameterConfiguration[] parameterConfigurations;
+    TriggerParameterConfigurations parameterConfigurations = new TriggerParameterConfigurations();
     Element parametersElement = hook.element("parameters");
     if (parametersElement != null) {
       List<Element> parameterElementList = parametersElement.elements("parameter");
-      parameterConfigurations = new TriggerParameterConfiguration[parameterElementList.size()];
-      for (int i = 0; i < parameterElementList.size(); ++i) {
-        parameterConfigurations[i] = new TriggerParameterConfiguration(
-            parameterElementList.get(i).attribute("name").getText(),
-            parameterElementList.get(i).attribute("value").getText());
+      for (Element element : parameterElementList) {
+        parameterConfigurations
+            .put(element.attribute("name").getText(), element.attribute("value").getText());
       }
-    } else {
-      parameterConfigurations = new TriggerParameterConfiguration[0];
     }
     return parameterConfigurations;
   }

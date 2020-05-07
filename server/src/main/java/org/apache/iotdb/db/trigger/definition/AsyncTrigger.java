@@ -24,7 +24,7 @@ import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 public abstract class AsyncTrigger extends Trigger {
 
   public AsyncTrigger(String path, String id, int enabledHooks,
-      TriggerParameterConfiguration[] parameters, boolean isActive) {
+      TriggerParameterConfigurations parameters, boolean isActive) {
     super(path, id, enabledHooks, parameters, isActive);
   }
 

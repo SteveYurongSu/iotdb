@@ -24,11 +24,11 @@ public abstract class Trigger {
   private final String path;
   private final String id;
   private final int enabledHooks;
-  private final TriggerParameterConfiguration[] parameters;
+  private final TriggerParameterConfigurations parameters;
   private boolean active;
 
   public Trigger(String path, String id, int enabledHooks,
-      TriggerParameterConfiguration[] parameters, boolean isActive) {
+      TriggerParameterConfigurations parameters, boolean isActive) {
     this.path = path;
     this.id = id;
     this.enabledHooks = enabledHooks;
@@ -39,7 +39,7 @@ public abstract class Trigger {
 
   abstract public boolean isSynced();
 
-  public void onConfig(TriggerParameterConfiguration[] parameters) {
+  public void onConfig(TriggerParameterConfigurations parameters) {
   }
 
   public void beforeStart() {
@@ -72,20 +72,13 @@ public abstract class Trigger {
     return enabledHooks;
   }
 
-  public final TriggerParameterConfiguration[] getParameters() {
+  public final TriggerParameterConfigurations getParameters() {
     return parameters;
   }
 
   @Override
   public final String toString() {
-    StringBuilder stringBuilder = new StringBuilder("Trigger\n\tPath: ").append(getPath())
-        .append("\n\tID: ").append(getId())
-        .append("\n\tClass Name: ").append(getClass().getName())
-        .append("\n\tParameters: ");
-    for (TriggerParameterConfiguration parameterConfiguration : parameters) {
-      stringBuilder.append("\n\t\t").append(parameterConfiguration.toString());
-    }
-    stringBuilder.append('\n');
-    return stringBuilder.toString();
+    return "Trigger\n\tPath: " + getPath() + "\n\tID: " + getId() + "\n\tClass Name: " + getClass()
+        .getName() + "\n\tParameters: \n" + parameters.toString();
   }
 }
