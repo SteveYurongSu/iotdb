@@ -22,6 +22,10 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.TRIGGER_CONFIGURATION_FILENAME;
 
+import java.io.File;
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -34,11 +38,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.time.ZoneId;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IoTDBConfig {
 
@@ -586,18 +585,38 @@ public class IoTDBConfig {
 
   /**
    * The execution pool size for async trigger tasks execution.
+   *
    * Set to 1 when less than or equal to 0.
    */
   private int asyncTriggerExecutionPoolSize = 4;
 
   /**
-   * If the number of async tasks that have been submitted but not yet executed for a trigger
-   * instance exceeds the following setting value, the async task scheduler will check the return
-   * value of {@link AsyncTrigger#getRejectionPolicy} to determine whether the newly arrived async
-   * trigger task need to be submitted. (continue to submit may cause OOM, because the task
-   * production rate > task execution rate) Set to 1 when less than or equal to 0.
+   * The number of tasks that each async trigger can submit to the thread pool at the same time.
+   *
+   * Set to 1 when less than or equal to 0.
    */
   private int asyncTriggerTaskExecutorNum = 16;
+
+  /**
+   * Maximum number of an async trigger's queued tasks.
+   * If the number of an async trigger's queued tasks exceeds the following setting value, the async
+   * task scheduler will check the return value of {@link AsyncTrigger#getRejectionPolicy} to
+   * determine whether the newly arrived async task of the trigger needs to be queued.
+   *
+   * Set to 64 when less than or equal to 0.
+   */
+  private int maxQueuedAsyncTriggerTasksNumForEachTriggerInstance = 64;
+
+  /**
+   * Maximum number of queued async tasks.
+   * If the number of all queued async tasks exceeds the following setting value, the async task
+   * scheduler will check the return value of {@link AsyncTrigger#getRejectionPolicy} to determine
+   * whether the newly arrived async task needs to be queued.
+   *
+   * Set it to {@link IoTDBConfig#maxQueuedAsyncTriggerTasksNumForEachTriggerInstance} when it is
+   * less than {@link IoTDBConfig#maxQueuedAsyncTriggerTasksNumForEachTriggerInstance}.
+   */
+  private int maxQueuedAsyncTriggerTasksNum = 128;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1639,5 +1658,22 @@ public class IoTDBConfig {
 
   public String getTriggerConfigurationFilename() {
     return getTriggerDir() + File.separator + TRIGGER_CONFIGURATION_FILENAME;
+  }
+
+  public int getMaxQueuedAsyncTriggerTasksNum() {
+    return maxQueuedAsyncTriggerTasksNum;
+  }
+
+  public void setMaxQueuedAsyncTriggerTasksNum(int maxQueuedAsyncTriggerTasksNum) {
+    this.maxQueuedAsyncTriggerTasksNum = maxQueuedAsyncTriggerTasksNum;
+  }
+
+  public int getMaxQueuedAsyncTriggerTasksNumForEachTriggerInstance() {
+    return maxQueuedAsyncTriggerTasksNumForEachTriggerInstance;
+  }
+
+  public void setMaxQueuedAsyncTriggerTasksNumForEachTriggerInstance(
+      int maxQueuedAsyncTriggerTasksNumForEachTriggerInstance) {
+    this.maxQueuedAsyncTriggerTasksNumForEachTriggerInstance = maxQueuedAsyncTriggerTasksNumForEachTriggerInstance;
   }
 }

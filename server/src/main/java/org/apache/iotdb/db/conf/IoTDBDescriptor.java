@@ -435,6 +435,24 @@ public class IoTDBDescriptor {
         conf.setAsyncTriggerTaskExecutorNum(
             asyncTriggerTaskExecutionNum <= 0 ? 1 : asyncTriggerTaskExecutionNum);
       }
+      if (properties
+          .getProperty(IoTDBConstant.TRIGGER_PROPERTY_MAX_QUEUED_TASKS_NUM_FOR_EACH_INSTANCE)
+          != null) {
+        int maxQueuedTasksNumForEachInstance = Integer.parseInt(
+            properties.getProperty(
+                IoTDBConstant.TRIGGER_PROPERTY_MAX_QUEUED_TASKS_NUM_FOR_EACH_INSTANCE));
+        conf.setMaxQueuedAsyncTriggerTasksNumForEachTriggerInstance(
+            maxQueuedTasksNumForEachInstance <= 0 ? 64 : maxQueuedTasksNumForEachInstance);
+      }
+      if (properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_MAX_QUEUED_TASKS_NUM_GLOBALLY)
+          != null) {
+        int maxQueuedTasksNum = Integer.parseInt(
+            properties.getProperty(IoTDBConstant.TRIGGER_PROPERTY_MAX_QUEUED_TASKS_NUM_GLOBALLY));
+        int maxQueuedTasksNumForEachInstance = conf
+            .getMaxQueuedAsyncTriggerTasksNumForEachTriggerInstance();
+        conf.setMaxQueuedAsyncTriggerTasksNum(
+            Math.max(maxQueuedTasksNum, maxQueuedTasksNumForEachInstance));
+      }
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
