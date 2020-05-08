@@ -391,7 +391,7 @@ autoCreateSchema
     ;
 
 triggerEventClause
-    : triggerEvent (OPERATOR_OR triggerEvent)*
+    : triggerEvent (OPERATOR_AND triggerEvent)*
     ;
 
 triggerEvent
@@ -400,11 +400,11 @@ triggerEvent
     ;
 
 triggerAttributeClause
-    : CLASSNAME OPERATOR_EQ className=STRING_LITERAL triggerParameterClause?
+    : CLASSNAME OPERATOR_EQ className=STRING_LITERAL (OPERATOR_AND triggerParameterClause)?
     ;
 
 triggerParameterClause
-    : PARAMETER OPERATOR_EQ (keyValuePair COMMA)* (keyValuePair COMMA?)
+    : PARAMETERS OPERATOR_EQ (keyValuePair COMMA)* (keyValuePair COMMA?)
     ;
 
 keyValuePair
@@ -727,6 +727,9 @@ PARAMETER
     : P A R A M E T E R
     ;
 
+PARAMETERS
+    : P A R A M E T E R S
+    ;
 
 VERSION
     : V E R S I O N
