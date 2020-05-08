@@ -1117,7 +1117,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       } else if (ctx.DELETE() != null) {
         operator.enableHook(HookID.BEFORE_DELETE);
       } else if (ctx.UPDATE() != null) {
-        operator.enableHook(HookID.BEFORE_UPDATE);
+        throw new UnsupportedOperationException("update trigger is not supported.");
+//        operator.enableHook(HookID.BEFORE_UPDATE);
       }
     } else if (ctx.AFTER() != null) {
       if (ctx.INSERT() != null) {
@@ -1129,7 +1130,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       } else if (ctx.DELETE() != null) {
         operator.enableHook(HookID.AFTER_DELETE);
       } else if (ctx.UPDATE() != null) {
-        operator.enableHook(HookID.AFTER_UPDATE);
+        throw new UnsupportedOperationException("update trigger is not supported.");
+//        operator.enableHook(HookID.AFTER_UPDATE);
       }
     }
   }

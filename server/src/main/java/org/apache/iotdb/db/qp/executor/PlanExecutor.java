@@ -471,10 +471,10 @@ public class PlanExecutor implements IPlanExecutor {
       RowRecord record = new RowRecord(0);
       updateRecord(record, trigger.getId());
       updateRecord(record, trigger.getPath());
-      updateRecord(record, trigger.isSynced() ? "SYNC" : "ASYNC");
+      updateRecord(record, trigger.isSynced() ? "sync" : "async");
       updateRecord(record, HookID.show(trigger.getEnabledHooks()));
       updateRecord(record, trigger.getClass().getName());
-      updateRecord(record, trigger.isActive() ? "STARTED" : "STOPPED");
+      updateRecord(record, trigger.isActive() ? "running" : "stopped");
       listDataSet.putRecord(record);
     });
     return listDataSet;
