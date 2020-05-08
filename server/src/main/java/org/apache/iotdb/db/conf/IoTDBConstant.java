@@ -103,7 +103,9 @@ public class IoTDBConstant {
 
   // trigger
   public static final String TRIGGER_PROPERTY_ASYNC_TRIGGER_EXECUTION_POOL_SIZE = "async_trigger_execution_pool_size";
-  public static final String TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM = "async_trigger_task_executor_num";
+  public static final String TRIGGER_PROPERTY_ASYNC_TRIGGER_TASK_EXECUTOR_NUM = "async_trigger_task_executor_num_for_each_trigger_instance";
+  public static final String TRIGGER_PROPERTY_MAX_QUEUED_TASKS_NUM_FOR_EACH_INSTANCE = "max_queued_async_trigger_tasks_num_for_each_trigger_instance";
+  public static final String TRIGGER_PROPERTY_MAX_QUEUED_TASKS_NUM_GLOBALLY = "max_queued_async_trigger_tasks_num";
   public static final String TRIGGER_INSTANCE_FILENAME_EXTENSION = ".jar";
   public static final String TRIGGER_CONFIGURATION_FILENAME = "triggers.xml";
 }

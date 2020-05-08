@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.trigger.async;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
@@ -28,68 +29,64 @@ import org.apache.iotdb.db.trigger.definition.AsyncTriggerRejectionPolicy;
 
 public class AsyncTriggerExecutionQueue extends WrappedRunnable {
 
-  private final AsyncTrigger trigger;
-  private final int maxAsyncTriggerExecutorNumber;
-  private final ConcurrentLinkedQueue<AsyncTriggerExecutor> executors;
+  private final ConcurrentLinkedQueue<AsyncTriggerExecutor> idleExecutors;
+  private final ConcurrentLinkedQueue<AsyncTriggerExecutor> busyExecutors;
+
+  private final int maxTaskNumber;
+  private final AtomicInteger taskNumber;
   private final ConcurrentLinkedQueue<AsyncTriggerTask> tasks;
 
   public AsyncTriggerExecutionQueue(AsyncTrigger trigger) throws TriggerInstanceLoadException {
-    this.trigger = trigger;
-    maxAsyncTriggerExecutorNumber = IoTDBDescriptor.getInstance().getConfig()
+    int maxAsyncTriggerExecutorNumber = IoTDBDescriptor.getInstance().getConfig()
         .getAsyncTriggerTaskExecutorNum();
-    executors = new ConcurrentLinkedQueue<>();
+    idleExecutors = new ConcurrentLinkedQueue<>();
     for (int i = 0; i < maxAsyncTriggerExecutorNumber; ++i) {
-      executors.add(new AsyncTriggerExecutor(trigger));
+      idleExecutors.add(new AsyncTriggerExecutor(trigger));
     }
+    busyExecutors = new ConcurrentLinkedQueue<>();
+    maxTaskNumber = IoTDBDescriptor.getInstance().getConfig()
+        .getMaxQueuedAsyncTriggerTasksNumForEachTriggerInstance();
+    taskNumber = new AtomicInteger(0);
     tasks = new ConcurrentLinkedQueue<>();
   }
 
   public boolean submit(AsyncTriggerTask task) {
-    if (executors.isEmpty() && trigger.getRejectionPolicy(task)
+    if (maxTaskNumber < taskNumber.get() && task.getRejectionPolicy()
         .equals(AsyncTriggerRejectionPolicy.DISCARD)) {
       return false;
     }
-    tasks.add(task);
+    addTask(task);
     return true;
   }
 
-  public synchronized AsyncTriggerExecutor pollExecutor() {
-    if (executors.isEmpty() || tasks.isEmpty()) {
-      return null;
+  public boolean getReadyForSubmit() {
+    if (allExecutorsAreBusy()) {
+      return false;
     }
-    AsyncTriggerExecutor executor = executors.poll();
-    executor.setTask(tasks.poll());
-    return executor;
+    AsyncTriggerExecutor executor = idleExecutors.poll();
+    executor.setTask(pollTask());
+    busyExecutors.add(executor);
+    return true;
   }
 
-  public void releaseExecutor(AsyncTriggerExecutor executor) {
-    executors.add(executor);
-  }
-
-  /**
-   * enter the method only when hasQueuedTasks() && !allExecutorsAreBusy()
-   */
   @Override
   public void runMayThrow() throws Exception {
-    AsyncTriggerExecutor executor = pollExecutor();
-    if (executor == null) {
-      return;
-    }
+    AsyncTriggerExecutor executor = busyExecutors.poll();
     try {
       executor.execute();
     } finally {
-      releaseExecutor(executor);
+      idleExecutors.add(executor);
     }
   }
 
   public void afterTriggerStop() {
-    while (hasQueuedTasks()) {
-      tasks.poll();
-    }
     while (!allExecutorsAreIdle()) {
-      ;
+      ; // wait for all submitted tasks to complete execution
     }
-    executors.forEach(AsyncTriggerExecutor::afterTriggerStop);
+    while (hasQueuedTasks()) {
+      pollTask(); // ignore the tasks which are not submitted to the pool
+    }
+    idleExecutors.forEach(AsyncTriggerExecutor::afterTriggerStop);
   }
 
   public boolean hasQueuedTasks() {
@@ -97,10 +94,20 @@ public class AsyncTriggerExecutionQueue extends WrappedRunnable {
   }
 
   public boolean allExecutorsAreBusy() {
-    return executors.isEmpty();
+    return idleExecutors.isEmpty();
   }
 
-  private boolean allExecutorsAreIdle() {
-    return executors.size() == maxAsyncTriggerExecutorNumber;
+  public boolean allExecutorsAreIdle() {
+    return busyExecutors.isEmpty();
+  }
+
+  private void addTask(AsyncTriggerTask task) {
+    taskNumber.incrementAndGet();
+    tasks.add(task);
+  }
+
+  private AsyncTriggerTask pollTask() {
+    taskNumber.decrementAndGet();
+    return tasks.poll();
   }
 }

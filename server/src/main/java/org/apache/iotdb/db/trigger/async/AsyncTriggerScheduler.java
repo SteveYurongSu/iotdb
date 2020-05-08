@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
+import org.apache.iotdb.db.trigger.definition.AsyncTriggerRejectionPolicy;
 import org.apache.iotdb.db.trigger.definition.Trigger;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
 import org.slf4j.Logger;
@@ -42,6 +44,9 @@ public class AsyncTriggerScheduler implements IService {
 
   private final ConcurrentHashMap<String, AsyncTriggerExecutionQueue> idToExecutionQueue;
   private LinkedBlockingQueue<AsyncTriggerExecutionQueue> waitingQueue;
+  private AtomicInteger waitingTaskNumber;
+  private final int maxWaitingTaskNumber;
+
   private ExecutorService executorService;
 
   private Thread transferThread;
@@ -49,14 +54,11 @@ public class AsyncTriggerScheduler implements IService {
     while (!Thread.currentThread().isInterrupted()) {
       try {
         AsyncTriggerExecutionQueue executionQueue = waitingQueue.take();
-        if (!executionQueue.hasQueuedTasks()) {
-          continue;
-        }
-        if (executionQueue.allExecutorsAreBusy()) {
+        if (!executionQueue.getReadyForSubmit()) {
           waitingQueue.offer(executionQueue);
-          continue;
         }
         executorService.submit(executionQueue);
+        waitingTaskNumber.decrementAndGet();
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -67,6 +69,9 @@ public class AsyncTriggerScheduler implements IService {
   private AsyncTriggerScheduler() {
     idToExecutionQueue = new ConcurrentHashMap<>();
     waitingQueue = new LinkedBlockingQueue<>();
+    waitingTaskNumber = new AtomicInteger(0);
+    maxWaitingTaskNumber = IoTDBDescriptor.getInstance().getConfig()
+        .getMaxQueuedAsyncTriggerTasksNum();
     executorService = IoTDBThreadPoolFactory.newFixedThreadPool(
         IoTDBDescriptor.getInstance().getConfig().getAsyncTriggerExecutionPoolSize(),
         ThreadName.TRIGGER_EXECUTOR_SERVICE.getName());
@@ -107,8 +112,14 @@ public class AsyncTriggerScheduler implements IService {
     if (executionQueue == null) {
       return;
     }
-    executionQueue.submit(task);
-    waitingQueue.offer(executionQueue);
+    if (maxWaitingTaskNumber < waitingTaskNumber.get() && task.getRejectionPolicy()
+        .equals(AsyncTriggerRejectionPolicy.DISCARD)) {
+      return;
+    }
+    if (executionQueue.submit(task)) {
+      waitingQueue.offer(executionQueue);
+      waitingTaskNumber.incrementAndGet();
+    }
   }
 
   private void init() throws TriggerInstanceLoadException {
