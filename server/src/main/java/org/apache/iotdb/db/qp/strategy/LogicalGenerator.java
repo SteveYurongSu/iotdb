@@ -804,7 +804,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setFill(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
-
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
@@ -1109,7 +1108,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
-                property.propertyValue().getText().toLowerCase());
+            property.propertyValue().getText().toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);
@@ -1335,7 +1334,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       operator.setKey(ctx.property().ID().getText());
     }
     String value;
-    if(propertyValueContext.STRING_LITERAL() != null) {
+    if (propertyValueContext.STRING_LITERAL() != null) {
       value = removeStringQuote(propertyValueContext.getText());
     } else {
       value = propertyValueContext.getText();
@@ -1398,7 +1397,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterKeyValuePair(KeyValuePairContext ctx) {
     CreateTriggerOperator operator = (CreateTriggerOperator) initializedOperator;
-    operator.addParameter(ctx.key.getText(), ctx.value.getText());
+    String key = ctx.key.getText();
+    String value = ctx.value.getText();
+    operator.addParameter(key.substring(1, key.length() - 1),
+        value.substring(1, value.length() - 1));
   }
 
   @Override

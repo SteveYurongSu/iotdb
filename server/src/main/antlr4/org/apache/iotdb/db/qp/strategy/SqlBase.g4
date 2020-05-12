@@ -436,7 +436,7 @@ triggerParameterClause
     ;
 
 keyValuePair
-    : OPERATOR_LT key=constant COMMA value=constant OPERATOR_GT
+    : OPERATOR_LT key=STRING_LITERAL COMMA value=STRING_LITERAL OPERATOR_GT
     ;
 
 //============================
