@@ -44,6 +44,7 @@ public enum ServiceType {
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
   TRIGGER_STORAGE_SERVICE("Trigger Storage ServerService", ""),
   TRIGGER_MANAGER_SERVICE("Trigger Manager ServerService", ""),
+  TRIGGER_SINK_SERVICE("Trigger Sink ServerService", ""),
   TRIGGER_ASYNC_SCHEDULER_SERVICE("Trigger Async Scheduler ServerService", ""),
   FLUSH_SERVICE("Flush ServerService",
       generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.trigger.async.AsyncTriggerScheduler;
 import org.apache.iotdb.db.trigger.manager.TriggerManager;
+import org.apache.iotdb.db.trigger.sinks.manager.TriggerSinkManager;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
@@ -109,6 +110,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(TriggerStorageService.getInstance());
+    registerManager.register(TriggerSinkManager.getInstance());
     registerManager.register(TriggerManager.getInstance());
     registerManager.register(AsyncTriggerScheduler.getInstance());
 
