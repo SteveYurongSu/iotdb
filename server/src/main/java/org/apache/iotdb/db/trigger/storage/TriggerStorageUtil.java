@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.trigger.storage;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TRIGGER_INSTANCE_FILENAME_EXTENSION;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -111,7 +106,7 @@ public class TriggerStorageUtil {
             element);
         int enabledHooks = Integer.parseInt(element.attribute("enabledHooks").getText());
         boolean isActive = !"false".equals(element.attribute("isActive").getText());
-        triggers.add(createTriggerInstanceFromJar(element.attribute("class").getText(),
+        triggers.add(createTriggerInstance(element.attribute("class").getText(),
             element.attribute("path").getText(), element.attribute("id").getText(),
             enabledHooks, parameterConfigurations, isActive));
       }
@@ -205,40 +200,27 @@ public class TriggerStorageUtil {
     }
   }
 
-  public static Trigger createTriggerInstanceFromJar(Trigger trigger)
-      throws TriggerInstanceLoadException {
-    return createTriggerInstanceFromJar(trigger.getClass().getName(), trigger.getPath(),
-        trigger.getId(), trigger.getEnabledHooks(), trigger.getParameters(), trigger.isActive());
+  public static Trigger createTriggerInstance(Trigger trigger) throws TriggerInstanceLoadException {
+    return createTriggerInstance(trigger.getClass().getName(), trigger.getPath(), trigger.getId(),
+        trigger.getEnabledHooks(), trigger.getParameters(), trigger.isActive());
   }
 
-  public static Trigger createTriggerInstanceFromJar(String className, String path,
-      String id, int enabledHooks, TriggerParameterConfigurations parameterConfigurations,
-      boolean isActive) throws TriggerInstanceLoadException {
-    URL url = null;
+  public static Trigger createTriggerInstance(String className, String path, String id,
+      int enabledHooks, TriggerParameterConfigurations parameterConfigurations, boolean isActive)
+      throws TriggerInstanceLoadException {
     try {
-      url = getTriggerInstanceJarFileURLByClassName(className);
-      URLClassLoader classLoader = new URLClassLoader(new URL[]{url}, Thread.currentThread()
+      Class<?> triggerClass = Class.forName(className, true, Thread.currentThread()
           .getContextClassLoader());
-      Class<?> triggerClass = classLoader.loadClass(className);
       Constructor<?> constructor = triggerClass.getConstructor(String.class, String.class,
           int.class, TriggerParameterConfigurations.class, boolean.class);
       return (Trigger) constructor.newInstance(path, id, enabledHooks, parameterConfigurations,
           isActive);
-    } catch (ClassNotFoundException | MalformedURLException | IllegalAccessException
-        | InstantiationException | InvocationTargetException | NoSuchMethodException e) {
+    } catch (ClassNotFoundException | IllegalAccessException | InstantiationException
+        | InvocationTargetException | NoSuchMethodException e) {
       throw new TriggerInstanceLoadException(String.format(
-          "Failed to load Trigger(Path: %s, ID: %s, IsActive: %s, ClassName: %s) from %s, because %s",
-          path, id, isActive ? "true" : "false", className, url == null ? "null" : url.getPath(),
-          e.getMessage()));
+          "Failed to load Trigger(Path: %s, ID: %s, IsActive: %s, ClassName: %s), because %s",
+          path, id, isActive ? "true" : "false", className, e.getMessage()));
     }
-  }
-
-  private static URL getTriggerInstanceJarFileURLByClassName(String className)
-      throws MalformedURLException {
-    File jarFile = new File(
-        IoTDBDescriptor.getInstance().getConfig().getTriggerDir() + File.separator + className
-            + TRIGGER_INSTANCE_FILENAME_EXTENSION);
-    return jarFile.getAbsoluteFile().toURI().toURL();
   }
 
   private static boolean triggerWithTheSameIdOrSyncTypeHasAlreadyBeenRegistered(Trigger trigger,

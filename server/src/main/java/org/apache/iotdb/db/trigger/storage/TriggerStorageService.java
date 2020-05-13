@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.trigger.storage;
 
-import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.createTriggerInstanceFromJar;
+import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.createTriggerInstance;
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.makeTriggerConfigurationFileIfNecessary;
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.makeTriggerDirectoryIfNecessary;
 import static org.apache.iotdb.db.trigger.storage.TriggerStorageUtil.recoveryTriggersFromConfigurationFile;
@@ -76,7 +76,7 @@ public class TriggerStorageService implements IService {
       throws TriggerInstanceLoadException, TriggerManagementException {
     lock.lock();
     try {
-      Trigger trigger = createTriggerInstanceFromJar(className, path, id, enabledHooks,
+      Trigger trigger = createTriggerInstance(className, path, id, enabledHooks,
           parameterConfigurations, true);
       registerTriggerToConfigurationFile(trigger);
       return trigger;

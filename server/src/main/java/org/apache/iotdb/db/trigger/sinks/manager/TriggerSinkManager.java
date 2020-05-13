@@ -84,7 +84,8 @@ public class TriggerSinkManager implements IService {
   private TriggerSink createSinkInstance(TriggerSinkParameterConfigurations configurations)
       throws TriggerSinkLoadException {
     try {
-      Class<?> sinkClass = Class.forName(configurations.getClassName());
+      Class<?> sinkClass = Class.forName(configurations.getClassName(), true,
+          Thread.currentThread().getContextClassLoader());
       Constructor<?> constructor = sinkClass
           .getConstructor(TriggerSinkParameterConfigurations.class);
       return (TriggerSink) constructor.newInstance(configurations);
