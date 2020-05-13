@@ -29,7 +29,7 @@ public class AsyncTriggerExecutor {
   private AsyncTriggerTask task;
 
   public AsyncTriggerExecutor(AsyncTrigger trigger) throws TriggerInstanceLoadException {
-    handler = (AsyncTrigger) TriggerStorageUtil.createTriggerInstanceFromJar(trigger);
+    handler = (AsyncTrigger) TriggerStorageUtil.createTriggerInstance(trigger);
     handler.beforeStart();
   }
 
