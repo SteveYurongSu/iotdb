@@ -163,9 +163,6 @@ import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
-//import org.apache.iotdb.db.query.fill.IFill;
-//import org.apache.iotdb.db.query.fill.LinearFill;
-//import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.trigger.definition.HookID;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -173,7 +170,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
