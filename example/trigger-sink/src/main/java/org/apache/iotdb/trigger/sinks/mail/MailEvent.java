@@ -17,8 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.sinks.definition;
+package org.apache.iotdb.trigger.sinks.mail;
 
-public interface TriggerSinkEvent {
+import org.apache.iotdb.db.trigger.sink.TriggerSinkEvent;
 
+public class MailEvent implements TriggerSinkEvent {
+
+  private final String topic;
+  private final String title;
+  private final String body;
+  private final String sender;
+  private final String[] receivers;
+
+  public MailEvent(String topic, String title, String body, String sender, String... receivers) {
+    this.topic = topic;
+    this.title = title;
+    this.body = body;
+    this.sender = sender;
+    this.receivers = receivers;
+  }
+
+  public String getTopic() {
+    return topic;
+  }
+
+  public String getTitle() {
+    return title;
+  }
+
+  public String getBody() {
+    return body;
+  }
+
+  public String getSender() {
+    return sender;
+  }
+
+  public String[] getReceivers() {
+    return receivers;
+  }
 }

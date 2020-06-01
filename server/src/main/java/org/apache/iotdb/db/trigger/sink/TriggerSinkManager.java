@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.sinks.manager;
+package org.apache.iotdb.db.trigger.sink;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -26,8 +26,6 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.iotdb.db.exception.trigger.TriggerSinkLoadException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.trigger.sinks.definition.TriggerSink;
-import org.apache.iotdb.db.trigger.sinks.definition.TriggerSinkParameterConfigurations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

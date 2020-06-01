@@ -17,43 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.sinks.mail;
+package org.apache.iotdb.trigger.sinks.mqtt;
 
-import org.apache.iotdb.db.trigger.sinks.definition.TriggerSinkEvent;
+import org.apache.iotdb.db.trigger.sink.TriggerSinkParameterConfigurations;
 
-public class MailEvent implements TriggerSinkEvent {
+public class MQTTParameterConfiguration extends TriggerSinkParameterConfigurations {
 
-  private final String topic;
-  private final String title;
-  private final String body;
-  private final String sender;
-  private final String[] receivers;
+  private final String host;
+  private final int port;
+  private final String userName;
+  private final String password;
 
-  public MailEvent(String topic, String title, String body, String sender, String... receivers) {
-    this.topic = topic;
-    this.title = title;
-    this.body = body;
-    this.sender = sender;
-    this.receivers = receivers;
+  public MQTTParameterConfiguration(String className, String id, String host, int port,
+      String userName, String password) {
+    super(className, id);
+    this.host = host;
+    this.port = port;
+    this.userName = userName;
+    this.password = password;
   }
 
-  public String getTopic() {
-    return topic;
+  public String getHost() {
+    return host;
   }
 
-  public String getTitle() {
-    return title;
+  public int getPort() {
+    return port;
   }
 
-  public String getBody() {
-    return body;
+  public String getUserName() {
+    return userName;
   }
 
-  public String getSender() {
-    return sender;
-  }
-
-  public String[] getReceivers() {
-    return receivers;
+  public String getPassword() {
+    return password;
   }
 }
