@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.sinks.mail;
+package org.apache.iotdb.trigger.sinks.mail;
 
-import org.apache.iotdb.db.trigger.sinks.definition.TriggerSinkParameterConfigurations;
+import org.apache.iotdb.db.trigger.sink.TriggerSinkParameterConfigurations;
 import org.simplejavamail.api.mailer.config.TransportStrategy;
 
 public class MailParameterConfigurations extends TriggerSinkParameterConfigurations {

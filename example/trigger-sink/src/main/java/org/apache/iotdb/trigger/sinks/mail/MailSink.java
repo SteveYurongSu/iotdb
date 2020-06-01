@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.sinks.mail;
+package org.apache.iotdb.trigger.sinks.mail;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.iotdb.db.trigger.sinks.definition.TriggerSink;
-import org.apache.iotdb.db.trigger.sinks.definition.TriggerSinkEvent;
-import org.apache.iotdb.db.trigger.sinks.definition.TriggerSinkParameterConfigurations;
+import org.apache.iotdb.db.trigger.sink.TriggerSink;
+import org.apache.iotdb.db.trigger.sink.TriggerSinkEvent;
+import org.apache.iotdb.db.trigger.sink.TriggerSinkParameterConfigurations;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;
 import org.simplejavamail.email.EmailBuilder;

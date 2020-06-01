@@ -36,7 +36,7 @@ import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.trigger.async.AsyncTriggerScheduler;
 import org.apache.iotdb.db.trigger.manager.TriggerManager;
-import org.apache.iotdb.db.trigger.sinks.manager.TriggerSinkManager;
+import org.apache.iotdb.db.trigger.sink.TriggerSinkManager;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;

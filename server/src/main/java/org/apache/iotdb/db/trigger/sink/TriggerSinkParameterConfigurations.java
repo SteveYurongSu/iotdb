@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.trigger.sinks.definition;
+package org.apache.iotdb.db.trigger.sink;
 
 public abstract class TriggerSinkParameterConfigurations {
 
