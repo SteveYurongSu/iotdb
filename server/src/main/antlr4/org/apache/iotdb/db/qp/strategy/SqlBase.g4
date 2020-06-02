@@ -423,7 +423,7 @@ triggerEventClause
     ;
 
 triggerEvent
-    : (BEFORE | AFTER) (INSERT | UPDATE | DELETE | BATCH INSERT)
+    : (BEFORE | AFTER) (INSERT (RECORD | TABLET)? | UPDATE | DELETE)
     | ON ALL EVENTS
     ;
 
@@ -898,8 +898,12 @@ AFTER
     : A F T E R
     ;
 
-BATCH
-    : B A T C H
+TABLET
+    : T A B L E T
+    ;
+
+RECORD
+    : R E C O R D
     ;
 
 TRIGGER

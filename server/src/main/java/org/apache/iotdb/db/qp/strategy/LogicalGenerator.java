@@ -1356,7 +1356,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
     if (ctx.BEFORE() != null) {
       if (ctx.INSERT() != null) {
-        if (ctx.BATCH() != null) {
+        if (ctx.TABLET() != null) {
           operator.enableHook(HookID.BEFORE_INSERT_TABLET);
         } else {
           operator.enableHook(HookID.BEFORE_INSERT_RECORD);
@@ -1369,7 +1369,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       }
     } else if (ctx.AFTER() != null) {
       if (ctx.INSERT() != null) {
-        if (ctx.BATCH() != null) {
+        if (ctx.TABLET() != null) {
           operator.enableHook(HookID.AFTER_INSERT_TABLET);
         } else {
           operator.enableHook(HookID.AFTER_INSERT_RECORD);
