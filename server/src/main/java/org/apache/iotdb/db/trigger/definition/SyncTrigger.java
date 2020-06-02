@@ -56,7 +56,7 @@ public abstract class SyncTrigger extends Trigger {
   }
 
   /**
-   * This hook will be called if {@link Trigger#conditionBeforeInsertTablet(long[], Object[])}
+   * This hook will be called if {@link Trigger#conditionBeforeInsertTablet(long[], Object)}
    * returns {@code true}. Modify {@code timestamps} in this method may cause undefined behavior.
    *
    * @param timestamps All timestamps in the tablet to be inserted.
@@ -65,18 +65,18 @@ public abstract class SyncTrigger extends Trigger {
    * Please make sure the return value has the same type as the param {@code values}. The length of
    * the return array should always be the same as the length of {@code timestamps}.
    */
-  public Object[] actionBeforeInsertTablet(final long[] timestamps, final Object[] values) {
+  public Object actionBeforeInsertTablet(final long[] timestamps, final Object values) {
     return values;
   }
 
   /**
-   * This hook will be called if {@link Trigger#conditionAfterInsertTablet(long[], Object[])}
+   * This hook will be called if {@link Trigger#conditionAfterInsertTablet(long[], Object)}
    * returns {@code true}. Modify params in this method may cause undefined behavior.
    *
    * @param timestamps All timestamps in the inserted tablet.
    * @param values All values in the inserted tablet.
    */
-  public void actionAfterInsertTablet(final long[] timestamps, final Object[] values) {
+  public void actionAfterInsertTablet(final long[] timestamps, final Object values) {
   }
 
   /**

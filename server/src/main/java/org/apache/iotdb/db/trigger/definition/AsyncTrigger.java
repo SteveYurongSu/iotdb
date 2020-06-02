@@ -58,23 +58,23 @@ public abstract class AsyncTrigger extends Trigger {
   }
 
   /**
-   * This hook will be called if {@link Trigger#conditionBeforeInsertTablet(long[], Object[])}
+   * This hook will be called if {@link Trigger#conditionBeforeInsertTablet(long[], Object)}
    * returns {@code true}. Modify params in this method may cause undefined behavior.
    *
    * @param timestamps All timestamps in the tablet to be inserted.
    * @param values All values in the tablet to be inserted.
    */
-  public void actionBeforeInsertTablet(final long[] timestamps, final Object[] values) {
+  public void actionBeforeInsertTablet(final long[] timestamps, final Object values) {
   }
 
   /**
-   * This hook will be called if {@link Trigger#conditionAfterInsertTablet(long[], Object[])}
+   * This hook will be called if {@link Trigger#conditionAfterInsertTablet(long[], Object)}
    * returns {@code true}. Modify params in this method may cause undefined behavior.
    *
    * @param timestamps All timestamps in the inserted tablet.
    * @param values All values in the inserted tablet.
    */
-  public void actionAfterInsertTablet(final long[] timestamps, final Object[] values) {
+  public void actionAfterInsertTablet(final long[] timestamps, final Object values) {
   }
 
   /**

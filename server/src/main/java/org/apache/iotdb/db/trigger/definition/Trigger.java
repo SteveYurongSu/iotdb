@@ -56,11 +56,11 @@ public abstract class Trigger {
     return true;
   }
 
-  public boolean conditionBeforeInsertTablet(final long[] timestamps, final Object[] values) {
+  public boolean conditionBeforeInsertTablet(final long[] timestamps, final Object values) {
     return true;
   }
 
-  public boolean conditionAfterInsertTablet(final long[] timestamps, final Object[] values) {
+  public boolean conditionAfterInsertTablet(final long[] timestamps, final Object values) {
     return true;
   }
 

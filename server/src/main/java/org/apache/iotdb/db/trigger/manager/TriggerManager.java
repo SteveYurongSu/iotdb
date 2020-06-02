@@ -208,7 +208,7 @@ public class TriggerManager implements IService {
 
     for (int i = 0; i < paths.size(); ++i) {
       String path = paths.get(i).getFullPath();
-      Object[] values = (Object[]) columns[i];
+      Object values = columns[i];
       // fire async triggers
       AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path);
       if (asyncTrigger != null && asyncTrigger.isActive() && BEFORE_INSERT_TABLET
@@ -240,7 +240,7 @@ public class TriggerManager implements IService {
 
     for (int i = 0; i < paths.size(); ++i) {
       String path = paths.get(i).getFullPath();
-      Object[] values = (Object[]) columns[i];
+      Object values = columns[i];
       // fire async triggers
       AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path);
       if (asyncTrigger != null && asyncTrigger.isActive() && AFTER_INSERT_TABLET

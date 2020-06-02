@@ -1068,19 +1068,21 @@ public class PlanExecutor implements IPlanExecutor {
       String deviceId = insertTabletPlan.getDeviceId();
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
+      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
         // check if timeseries exists
         if (!node.hasChild(measurementList[i])) {
-          if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+          if (!conf.isAutoCreateSchemaEnabled()) {
             throw new QueryProcessException(
                 String.format(
                     "Current deviceId[%s] does not contain measurement:%s",
                     deviceId, measurementList[i]));
           }
-          internalCreateTimeseries((new Path(deviceId, measurementList[i])).getFullPath(),
-              dataTypes[i]);
+          Path path = new Path(deviceId, measurementList[i]);
+          TSDataType dataType = dataTypes[i];
+          internalCreateTimeseries(path.getFullPath(), dataType);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
 

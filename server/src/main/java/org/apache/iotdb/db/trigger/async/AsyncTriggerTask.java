@@ -32,10 +32,10 @@ public class AsyncTriggerTask {
   private final Object value;
 
   private final long[] timestamps;
-  private final Object[] values;
+  private final Object values;
 
   public AsyncTriggerTask(AsyncTrigger trigger, HookID hookID, long timestamp, Object value,
-      long[] timestamps, Object[] values) {
+      long[] timestamps, Object values) {
     this.trigger = trigger;
     this.hookID = hookID;
     this.timestamp = timestamp;
@@ -88,7 +88,7 @@ public class AsyncTriggerTask {
     return timestamps;
   }
 
-  public Object[] getValues() {
+  public Object getValues() {
     return values;
   }
 
@@ -96,24 +96,24 @@ public class AsyncTriggerTask {
     return (String[]) values;
   }
 
-  public Integer[] getIntegerValues() {
-    return (Integer[]) values;
+  public int[] getIntValues() {
+    return (int[]) values;
   }
 
-  public Long[] getLongValues() {
-    return (Long[]) values;
+  public long[] getLongValues() {
+    return (long[]) values;
   }
 
-  public Boolean[] getBooleanValues() {
-    return (Boolean[]) values;
+  public boolean[] getBooleanValues() {
+    return (boolean[]) values;
   }
 
-  public Float[] getFloatValues() {
-    return (Float[]) values;
+  public float[] getFloatValues() {
+    return (float[]) values;
   }
 
-  public Double[] getDoubleValues(String name) {
-    return (Double[]) values;
+  public double[] getDoubleValues() {
+    return (double[]) values;
   }
 
   public RejectionPolicy getRejectionPolicy() {
