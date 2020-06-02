@@ -600,7 +600,7 @@ public class IoTDBConfig {
   /**
    * Maximum number of an async trigger's queued tasks.
    * If the number of an async trigger's queued tasks exceeds the following setting value, the async
-   * task scheduler will check the return value of {@link AsyncTrigger#getRejectionPolicy} to
+   * task scheduler will check the return value of {@link AsyncTrigger#rejectionPolicy} to
    * determine whether the newly arrived async task of the trigger needs to be queued.
    *
    * Set to 64 when less than or equal to 0.
@@ -610,7 +610,7 @@ public class IoTDBConfig {
   /**
    * Maximum number of queued async tasks.
    * If the number of all queued async tasks exceeds the following setting value, the async task
-   * scheduler will check the return value of {@link AsyncTrigger#getRejectionPolicy} to determine
+   * scheduler will check the return value of {@link AsyncTrigger#rejectionPolicy} to determine
    * whether the newly arrived async task needs to be queued.
    *
    * Set it to {@link IoTDBConfig#maxQueuedAsyncTriggerTasksNumForEachTriggerInstance} when it is

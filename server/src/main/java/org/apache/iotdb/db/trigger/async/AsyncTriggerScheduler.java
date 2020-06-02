@@ -32,7 +32,7 @@ import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
-import org.apache.iotdb.db.trigger.definition.AsyncTriggerRejectionPolicy;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger.RejectionPolicy;
 import org.apache.iotdb.db.trigger.definition.Trigger;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
 import org.slf4j.Logger;
@@ -113,7 +113,7 @@ public class AsyncTriggerScheduler implements IService {
       return;
     }
     if (maxWaitingTaskNumber < waitingTaskNumber.get() && task.getRejectionPolicy()
-        .equals(AsyncTriggerRejectionPolicy.DISCARD)) {
+        .equals(RejectionPolicy.DISCARD)) {
       return;
     }
     if (executionQueue.submit(task)) {

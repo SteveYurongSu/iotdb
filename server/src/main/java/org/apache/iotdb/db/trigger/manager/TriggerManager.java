@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.trigger.manager;
 
-import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_BATCH_INSERT;
 import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_DELETE;
-import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_INSERT;
-import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_BATCH_INSERT;
+import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_INSERT_RECORD;
+import static org.apache.iotdb.db.trigger.definition.HookID.AFTER_INSERT_TABLET;
 import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_DELETE;
-import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_INSERT;
+import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_INSERT_RECORD;
+import static org.apache.iotdb.db.trigger.definition.HookID.BEFORE_INSERT_TABLET;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,20 +39,18 @@ import org.apache.iotdb.db.exception.trigger.TriggerManagementException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.trigger.async.AsyncTriggerScheduler;
 import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
 import org.apache.iotdb.db.trigger.definition.SyncTrigger;
-import org.apache.iotdb.db.trigger.definition.SyncTriggerExecutionResult;
 import org.apache.iotdb.db.trigger.definition.Trigger;
 import org.apache.iotdb.db.trigger.definition.TriggerParameterConfigurations;
 import org.apache.iotdb.db.trigger.storage.TriggerStorageService;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,173 +90,172 @@ public class TriggerManager implements IService {
   }
 
   /**
-   * DOCUMENT ME! stringValues in insertPlan may be modified here.
+   * NOTICE: {@code insertPlan} may be modified in this method.
+   *
+   * @return Return {@code true} to continue the insert operation. Return {@code false} to terminate
+   * the insert operation.
    */
-  public SyncTriggerExecutionResult fireBeforeInsert(List<Path> paths, long timestamp,
-      TSDataType[] tsDataTypes, String[] stringValues) {
-    // fire sync triggers
-    SyncTriggerExecutionResult result = SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+  public boolean fireBeforeInsertRecord(InsertPlan insertPlan) {
+    List<Path> paths = insertPlan.getPaths();
+    long timestamp = insertPlan.getTime();
+    Object[] values = insertPlan.getValues();
+    Object[] newValues = values;
+
     for (int i = 0; i < paths.size(); ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
-      if (syncTrigger == null || !syncTrigger.isActive() || !BEFORE_INSERT
-          .isEnabled(syncTrigger.getEnabledHooks())) {
-        continue;
+      String path = paths.get(i).getFullPath();
+      Object value = values[i];
+      // fire async triggers
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path);
+      if (asyncTrigger != null && asyncTrigger.isActive() && BEFORE_INSERT_RECORD
+          .isEnabled(asyncTrigger.getEnabledHooks()) && asyncTrigger
+          .conditionBeforeInsertRecord(timestamp, value)) {
+        AsyncTriggerScheduler.getInstance().submit(
+            new AsyncTriggerTask(asyncTrigger, BEFORE_INSERT_RECORD, timestamp, value, null, null));
       }
-      DataPoint dataPoint = DataPoint
-          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]);
-      SyncTriggerExecutionResult executionResult = syncTrigger.beforeInsert(timestamp, dataPoint);
-      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
-        result = SyncTriggerExecutionResult.SKIP;
-      } else if (executionResult.equals(SyncTriggerExecutionResult.DATA_POINT_CHANGED)) {
-        stringValues[i] = dataPoint.getValue().toString();
-        result = result.equals(SyncTriggerExecutionResult.SKIP) ?
-            SyncTriggerExecutionResult.SKIP : SyncTriggerExecutionResult.DATA_POINT_CHANGED;
+      // fire sync triggers
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path);
+      if (syncTrigger != null && syncTrigger.isActive() && BEFORE_INSERT_RECORD
+          .isEnabled(syncTrigger.getEnabledHooks()) && syncTrigger
+          .conditionBeforeInsertRecord(timestamp, value)) {
+        values[i] = syncTrigger.actionBeforeInsertRecord(timestamp, value);
+        if (values[i] == null) {
+          newValues = null;
+        }
       }
     }
 
-    // fire async triggers
-    for (int i = 0; i < paths.size(); ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
-          .get(paths.get(i).getFullPath());
-      if (asyncTrigger == null || !asyncTrigger.isActive() || !BEFORE_INSERT
-          .isEnabled(asyncTrigger.getEnabledHooks())) {
-        continue;
-      }
-      Object value = DataPoint
-          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]).getValue();
-      AsyncTriggerScheduler.getInstance()
-          .submit(new AsyncTriggerTask(asyncTrigger, BEFORE_INSERT, timestamp, value, null, null));
-    }
-
-    return result;
+    insertPlan.setValues(newValues);
+    return newValues != null;
   }
 
-  public void fireAfterInsert(List<Path> paths, long timestamp, TSDataType[] tsDataTypes,
-      String[] stringValues) {
-    // fire sync triggers
-    for (int i = 0; i < paths.size(); ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
-      if (syncTrigger == null || !syncTrigger.isActive() || !AFTER_INSERT
-          .isEnabled(syncTrigger.getEnabledHooks())) {
-        continue;
-      }
-      DataPoint dataPoint = DataPoint
-          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]);
-      syncTrigger.afterInsert(timestamp, dataPoint.getValue());
-    }
+  public void fireAfterInsertRecord(InsertPlan insertPlan) {
+    List<Path> paths = insertPlan.getPaths();
+    long timestamp = insertPlan.getTime();
+    Object[] values = insertPlan.getValues();
 
-    // fire async triggers
     for (int i = 0; i < paths.size(); ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
-          .get(paths.get(i).getFullPath());
-      if (asyncTrigger == null || !asyncTrigger.isActive() || !AFTER_INSERT
-          .isEnabled(asyncTrigger.getEnabledHooks())) {
-        continue;
+      String path = paths.get(i).getFullPath();
+      Object value = values[i];
+      // fire async triggers
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path);
+      if (asyncTrigger != null && asyncTrigger.isActive() && AFTER_INSERT_RECORD
+          .isEnabled(asyncTrigger.getEnabledHooks()) && asyncTrigger
+          .conditionAfterInsertRecord(timestamp, value)) {
+        AsyncTriggerScheduler.getInstance().submit(
+            new AsyncTriggerTask(asyncTrigger, AFTER_INSERT_RECORD, timestamp, value, null, null));
       }
-      Object value = DataPoint
-          .getDataPoint(tsDataTypes[i], paths.get(i).getMeasurement(), stringValues[i]).getValue();
-      AsyncTriggerScheduler.getInstance()
-          .submit(new AsyncTriggerTask(asyncTrigger, AFTER_INSERT, timestamp, value, null, null));
+      // fire sync triggers
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path);
+      if (syncTrigger != null && syncTrigger.isActive() && AFTER_INSERT_RECORD
+          .isEnabled(syncTrigger.getEnabledHooks()) && syncTrigger
+          .conditionAfterInsertRecord(timestamp, value)) {
+        syncTrigger.actionAfterInsertRecord(timestamp, value);
+      }
     }
   }
 
-  public SyncTriggerExecutionResult fireBeforeDelete(Path path, LongDataPoint timestamp) {
-    // fire sync trigger
-    SyncTriggerExecutionResult result = SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
-    SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path.getFullPath());
-    if (syncTrigger != null && syncTrigger.isActive() && BEFORE_DELETE
-        .isEnabled(syncTrigger.getEnabledHooks())) {
-      result = syncTrigger.beforeDelete(timestamp);
-    }
-
+  /**
+   * @return Return the actual timestamp in the delete operation. Return {@code null} to terminate
+   * the delete operation.
+   */
+  public Long fireBeforeDelete(Path path, long timestamp) {
+    Long ret = timestamp;
     // fire async trigger
     AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path.getFullPath());
     if (asyncTrigger != null && asyncTrigger.isActive() && BEFORE_DELETE
-        .isEnabled(asyncTrigger.getEnabledHooks())) {
-      AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerTask(asyncTrigger, BEFORE_DELETE, (Long) timestamp.getValue(), null, null,
-              null));
+        .isEnabled(asyncTrigger.getEnabledHooks()) && asyncTrigger
+        .conditionBeforeDelete(timestamp)) {
+      AsyncTriggerScheduler.getInstance()
+          .submit(new AsyncTriggerTask(asyncTrigger, BEFORE_DELETE, timestamp, null, null, null));
     }
-
-    return result;
+    // fire sync trigger
+    SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path.getFullPath());
+    if (syncTrigger != null && syncTrigger.isActive() && BEFORE_DELETE
+        .isEnabled(syncTrigger.getEnabledHooks()) && syncTrigger.conditionBeforeDelete(timestamp)) {
+      ret = syncTrigger.actionBeforeDelete(timestamp);
+    }
+    return ret;
   }
 
   public void fireAfterDelete(Path path, long timestamp) {
-    // fire sync trigger
-    SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path.getFullPath());
-    if (syncTrigger != null && syncTrigger.isActive() && AFTER_DELETE
-        .isEnabled(syncTrigger.getEnabledHooks())) {
-      syncTrigger.afterDelete(timestamp);
-    }
-
+    // fire async trigger
     AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path.getFullPath());
     if (asyncTrigger != null && asyncTrigger.isActive() && AFTER_DELETE
-        .isEnabled(asyncTrigger.getEnabledHooks())) {
+        .isEnabled(asyncTrigger.getEnabledHooks()) && asyncTrigger
+        .conditionAfterDelete(timestamp)) {
       AsyncTriggerScheduler.getInstance()
           .submit(new AsyncTriggerTask(asyncTrigger, AFTER_DELETE, timestamp, null, null, null));
     }
+    // fire sync trigger
+    SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path.getFullPath());
+    if (syncTrigger != null && syncTrigger.isActive() && AFTER_DELETE
+        .isEnabled(syncTrigger.getEnabledHooks()) && syncTrigger.conditionAfterDelete(timestamp)) {
+      syncTrigger.actionAfterDelete(timestamp);
+    }
   }
 
-  //! times should be sorted.
-  public SyncTriggerExecutionResult fireBeforeBatchInsert(List<Path> paths, long[] timestamps,
-      Object[] values) {
-    // fire sync triggers
-    SyncTriggerExecutionResult result = SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+  /**
+   * NOTICE: {@code insertTabletPlan} may be modified in this method.
+   *
+   * @return Return {@code true} to continue the insert operation. Return {@code false} to terminate
+   * the insert operation.
+   */
+  public boolean fireBeforeInsertTablet(InsertTabletPlan insertTabletPlan) {
+    List<Path> paths = insertTabletPlan.getPaths();
+    long[] timestamps = insertTabletPlan.getTimes();
+    Object[] columns = insertTabletPlan.getColumns();
+    Object[] newColumns = columns;
+
     for (int i = 0; i < paths.size(); ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
-      if (syncTrigger == null || !syncTrigger.isActive() || !BEFORE_BATCH_INSERT
-          .isEnabled(syncTrigger.getEnabledHooks())) {
-        continue;
+      String path = paths.get(i).getFullPath();
+      Object[] values = (Object[]) columns[i];
+      // fire async triggers
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path);
+      if (asyncTrigger != null && asyncTrigger.isActive() && BEFORE_INSERT_TABLET
+          .isEnabled(asyncTrigger.getEnabledHooks()) && asyncTrigger
+          .conditionBeforeInsertTablet(timestamps, values)) {
+        AsyncTriggerScheduler.getInstance().submit(
+            new AsyncTriggerTask(asyncTrigger, BEFORE_INSERT_TABLET, -1, null, timestamps, values));
       }
-      SyncTriggerExecutionResult executionResult = syncTrigger
-          .beforeBatchInsert(timestamps, (Object[]) values[i]);
-      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
-        result = SyncTriggerExecutionResult.SKIP;
-      } else if (executionResult.equals(SyncTriggerExecutionResult.DATA_POINT_CHANGED)) {
-        result = result.equals(SyncTriggerExecutionResult.SKIP) ?
-            SyncTriggerExecutionResult.SKIP : SyncTriggerExecutionResult.DATA_POINT_CHANGED;
+      // fire sync triggers
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path);
+      if (syncTrigger != null && syncTrigger.isActive() && BEFORE_INSERT_TABLET
+          .isEnabled(syncTrigger.getEnabledHooks()) && syncTrigger
+          .conditionBeforeInsertTablet(timestamps, values)) {
+        columns[i] = syncTrigger.actionBeforeInsertTablet(timestamps, values);
+        if (columns[i] == null) {
+          newColumns = null;
+        }
       }
     }
 
-    // fire async triggers
-    for (int i = 0; i < paths.size(); ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
-          .get(paths.get(i).getFullPath());
-      if (asyncTrigger == null || !asyncTrigger.isActive() || !BEFORE_BATCH_INSERT
-          .isEnabled(asyncTrigger.getEnabledHooks())) {
-        continue;
-      }
-      AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerTask(asyncTrigger, BEFORE_BATCH_INSERT, -1, null, timestamps,
-              (Object[]) values[i]));
-    }
-
-    return result;
+    insertTabletPlan.setColumns(newColumns);
+    return newColumns != null;
   }
 
-  // modify timestamps in after methods may cause undefine behavior.
-  public void fireAfterBatchInsert(List<Path> paths, long[] timestamps, Object[] values) {
-    // fire sync triggers
-    for (int i = 0; i < paths.size(); ++i) {
-      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(paths.get(i).getFullPath());
-      if (syncTrigger == null || !syncTrigger.isActive() || !AFTER_BATCH_INSERT
-          .isEnabled(syncTrigger.getEnabledHooks())) {
-        continue;
-      }
-      syncTrigger.afterBatchInsert(timestamps, (Object[]) values[i]);
-    }
+  public void fireAfterInsertTablet(InsertTabletPlan insertTabletPlan) {
+    List<Path> paths = insertTabletPlan.getPaths();
+    long[] timestamps = insertTabletPlan.getTimes();
+    Object[] columns = insertTabletPlan.getColumns();
 
-    // fire async triggers
     for (int i = 0; i < paths.size(); ++i) {
-      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers
-          .get(paths.get(i).getFullPath());
-      if (asyncTrigger == null || !asyncTrigger.isActive() || !AFTER_BATCH_INSERT
-          .isEnabled(asyncTrigger.getEnabledHooks())) {
-        continue;
+      String path = paths.get(i).getFullPath();
+      Object[] values = (Object[]) columns[i];
+      // fire async triggers
+      AsyncTrigger asyncTrigger = (AsyncTrigger) pathToAsyncTriggers.get(path);
+      if (asyncTrigger != null && asyncTrigger.isActive() && AFTER_INSERT_TABLET
+          .isEnabled(asyncTrigger.getEnabledHooks()) && asyncTrigger
+          .conditionAfterInsertTablet(timestamps, values)) {
+        AsyncTriggerScheduler.getInstance().submit(
+            new AsyncTriggerTask(asyncTrigger, AFTER_INSERT_TABLET, -1, null, timestamps, values));
       }
-      AsyncTriggerScheduler.getInstance().submit(
-          new AsyncTriggerTask(asyncTrigger, AFTER_BATCH_INSERT, -1, null, timestamps,
-              (Object[]) values[i]));
+      // fire sync triggers
+      SyncTrigger syncTrigger = (SyncTrigger) pathToSyncTriggers.get(path);
+      if (syncTrigger != null && syncTrigger.isActive() && AFTER_INSERT_TABLET
+          .isEnabled(syncTrigger.getEnabledHooks()) && syncTrigger
+          .conditionAfterInsertTablet(timestamps, values)) {
+        syncTrigger.actionAfterInsertTablet(timestamps, values);
+      }
     }
   }
 

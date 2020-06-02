@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.io.File;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -1358,9 +1357,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.BEFORE() != null) {
       if (ctx.INSERT() != null) {
         if (ctx.BATCH() != null) {
-          operator.enableHook(HookID.BEFORE_BATCH_INSERT);
+          operator.enableHook(HookID.BEFORE_INSERT_TABLET);
         } else {
-          operator.enableHook(HookID.BEFORE_INSERT);
+          operator.enableHook(HookID.BEFORE_INSERT_RECORD);
         }
       } else if (ctx.DELETE() != null) {
         operator.enableHook(HookID.BEFORE_DELETE);
@@ -1371,9 +1370,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     } else if (ctx.AFTER() != null) {
       if (ctx.INSERT() != null) {
         if (ctx.BATCH() != null) {
-          operator.enableHook(HookID.AFTER_BATCH_INSERT);
+          operator.enableHook(HookID.AFTER_INSERT_TABLET);
         } else {
-          operator.enableHook(HookID.AFTER_INSERT);
+          operator.enableHook(HookID.AFTER_INSERT_RECORD);
         }
       } else if (ctx.DELETE() != null) {
         operator.enableHook(HookID.AFTER_DELETE);

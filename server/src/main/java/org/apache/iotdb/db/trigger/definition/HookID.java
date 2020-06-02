@@ -24,15 +24,13 @@ import java.util.List;
 
 public enum HookID {
 
-  BEFORE_INSERT(0B00000001),
-  BEFORE_DELETE(0B00000010),
-  //  BEFORE_UPDATE(0B00000100),
-  BEFORE_BATCH_INSERT(0B00001000),
+  BEFORE_INSERT_RECORD(0B00000001),
+  BEFORE_INSERT_TABLET(0B00000010),
+  BEFORE_DELETE       (0B00000100),
 
-  AFTER_INSERT(0B00010000),
-  AFTER_DELETE(0B00100000),
-  //  AFTER_UPDATE(0B01000000),
-  AFTER_BATCH_INSERT(0B10000000),
+  AFTER_INSERT_RECORD (0B00010000),
+  AFTER_INSERT_TABLET (0B00100000),
+  AFTER_DELETE        (0B01000000),
 
   ON_ALL_EVENTS(~0B0),
   ;
@@ -73,22 +71,18 @@ public enum HookID {
   @Override
   public String toString() {
     switch (this) {
-      case BEFORE_INSERT:
-        return "before insert";
-      case AFTER_INSERT:
-        return "after insert";
+      case BEFORE_INSERT_RECORD:
+        return "before insert record";
+      case AFTER_INSERT_RECORD:
+        return "after insert record";
+      case BEFORE_INSERT_TABLET:
+        return "before insert tablet";
+      case AFTER_INSERT_TABLET:
+        return "after insert tablet";
       case BEFORE_DELETE:
         return "before delete";
       case AFTER_DELETE:
         return "after delete";
-//      case BEFORE_UPDATE:
-//        return "before update";
-//      case AFTER_UPDATE:
-//        return "after update";
-      case BEFORE_BATCH_INSERT:
-        return "before batch insert";
-      case AFTER_BATCH_INSERT:
-        return "after batch insert";
       case ON_ALL_EVENTS:
         return "all events";
       default:

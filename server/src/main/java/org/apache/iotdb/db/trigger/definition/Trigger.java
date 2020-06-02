@@ -48,6 +48,30 @@ public abstract class Trigger {
   public void afterStop() {
   }
 
+  public boolean conditionBeforeInsertRecord(final long timestamp, final Object value) {
+    return true;
+  }
+
+  public boolean conditionAfterInsertRecord(final long timestamp, final Object value) {
+    return true;
+  }
+
+  public boolean conditionBeforeInsertTablet(final long[] timestamps, final Object[] values) {
+    return true;
+  }
+
+  public boolean conditionAfterInsertTablet(final long[] timestamps, final Object[] values) {
+    return true;
+  }
+
+  public boolean conditionBeforeDelete(final long timestamp) {
+    return true;
+  }
+
+  public boolean conditionAfterDelete(final long timestamp) {
+    return true;
+  }
+
   public final void markAsActive() {
     active = true;
   }
@@ -78,7 +102,9 @@ public abstract class Trigger {
 
   @Override
   public final String toString() {
-    return "Trigger\n\tPath: " + getPath() + "\n\tID: " + getId() + "\n\tClass Name: " + getClass()
-        .getName() + "\n\tParameters: \n" + parameters.toString();
+    return "Trigger\n\tPath: " + getPath()
+        + "\n\tID: " + getId()
+        + "\n\tClass Name: " + getClass().getName()
+        + "\n\tParameters: \n" + parameters.toString();
   }
 }

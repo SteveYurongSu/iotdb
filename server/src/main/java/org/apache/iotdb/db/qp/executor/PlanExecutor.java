@@ -134,7 +134,6 @@ import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.trigger.definition.HookID;
-import org.apache.iotdb.db.trigger.definition.SyncTriggerExecutionResult;
 import org.apache.iotdb.db.trigger.definition.Trigger;
 import org.apache.iotdb.db.trigger.manager.TriggerManager;
 import org.apache.iotdb.db.utils.AuthUtils;
@@ -917,17 +916,12 @@ public class PlanExecutor implements IPlanExecutor {
       }
       mManager.getStorageGroupName(path.getFullPath());
 
-      LongDataPoint timestampDataPoint = (LongDataPoint) DataPoint
-          .getDataPoint(TSDataType.INT64, path.getMeasurement(), String.valueOf(timestamp));
-      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
-          .fireBeforeDelete(path, timestampDataPoint);
-      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
+      Long newTimestamp = TriggerManager.getInstance().fireBeforeDelete(path, timestamp);
+      if (newTimestamp == null) {
         return;
-      } else if (executionResult.equals(SyncTriggerExecutionResult.DATA_POINT_CHANGED)) {
-        timestamp = (Long) timestampDataPoint.getValue();
       }
-      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
-      TriggerManager.getInstance().fireAfterDelete(path, timestamp);
+      StorageEngine.getInstance().delete(deviceId, measurementId, newTimestamp);
+      TriggerManager.getInstance().fireAfterDelete(path, newTimestamp);
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -941,8 +935,6 @@ public class PlanExecutor implements IPlanExecutor {
       String deviceId = insertPlan.getDeviceId();
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
-      Path[] paths = new Path[measurementList.length];
-      TSDataType[] tsDataTypes = new TSDataType[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
         String measurement = measurementList[i];
@@ -950,30 +942,27 @@ public class PlanExecutor implements IPlanExecutor {
           if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           }
-          tsDataTypes[i] = TypeInferenceUtils
+          TSDataType tsDataType = TypeInferenceUtils
               .getPredictedDataType(insertPlan.getValues()[i], insertPlan.isInferType());
-          paths[i] = new Path(deviceId, measurement);
-          internalCreateTimeseries(paths[i].toString(), tsDataTypes[i]);
+          Path path = new Path(deviceId, measurement);
+          internalCreateTimeseries(path.getFullPath(), tsDataType);
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
         // reset measurement to common name instead of alias
         measurementList[i] = measurementNode.getName();
-
         if (!insertPlan.isInferType()) {
           checkType(insertPlan, i, measurementNode.getSchema().getType());
         }
       }
       insertPlan.setMeasurements(measurementList);
       insertPlan.setSchemasAndTransferType(schemas);
-//      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
-//          .fireBeforeInsert(paths, insertPlan.getTime(), tsDataTypes, insertPlan.getValues());
-//      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
-//        return;
-//      }
+
+      if (!TriggerManager.getInstance().fireBeforeInsertRecord(insertPlan)) {
+        return;
+      }
       StorageEngine.getInstance().insert(insertPlan);
-//      TriggerManager.getInstance()
-//          .fireAfterInsert(paths, insertPlan.getTime(), tsDataTypes, insertPlan.getValues());
+      TriggerManager.getInstance().fireAfterInsertRecord(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
@@ -1110,16 +1099,11 @@ public class PlanExecutor implements IPlanExecutor {
 
       TSStatus[] tsStatuses = new TSStatus[insertTabletPlan.getRowCount()];
       Arrays.fill(tsStatuses, RpcUtils.SUCCESS_STATUS);
-      SyncTriggerExecutionResult executionResult = TriggerManager.getInstance()
-          .fireBeforeBatchInsert(insertTabletPlan.getPaths(), insertTabletPlan.getTimes(),
-              insertTabletPlan.getColumns());
-      if (executionResult.equals(SyncTriggerExecutionResult.SKIP)) {
+      if (!TriggerManager.getInstance().fireBeforeInsertTablet(insertTabletPlan)) {
         return tsStatuses;
       }
       tsStatuses = StorageEngine.getInstance().insertTablet(insertTabletPlan);
-      TriggerManager.getInstance()
-          .fireAfterBatchInsert(insertTabletPlan.getPaths(), insertTabletPlan.getTimes(),
-              insertTabletPlan.getColumns());
+      TriggerManager.getInstance().fireAfterInsertTablet(insertTabletPlan);
       return tsStatuses;
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

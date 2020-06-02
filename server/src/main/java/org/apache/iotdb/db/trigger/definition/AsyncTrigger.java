@@ -23,6 +23,10 @@ import org.apache.iotdb.db.trigger.async.AsyncTriggerTask;
 
 public abstract class AsyncTrigger extends Trigger {
 
+  public enum RejectionPolicy {
+    DISCARD, ENQUEUE
+  }
+
   public AsyncTrigger(String path, String id, int enabledHooks,
       TriggerParameterConfigurations parameters, boolean isActive) {
     super(path, id, enabledHooks, parameters, isActive);
@@ -33,34 +37,72 @@ public abstract class AsyncTrigger extends Trigger {
     return false;
   }
 
-  public void beforeInsert(final long timestamp, final Object value) {
+  /**
+   * This hook will be called if {@link Trigger#conditionBeforeInsertRecord(long, Object)} returns
+   * {@code true}.
+   *
+   * @param timestamp The timestamp of the data point to be inserted.
+   * @param value The value of the data point to be inserted.
+   */
+  public void actionBeforeInsertRecord(final long timestamp, final Object value) {
   }
 
-  public void afterInsert(final long timestamp, final Object value) {
+  /**
+   * This hook will be called if {@link Trigger#conditionAfterInsertRecord(long, Object)} returns
+   * {@code true}.
+   *
+   * @param timestamp The timestamp of the inserted data point.
+   * @param value The value of the inserted data point.
+   */
+  public void actionAfterInsertRecord(final long timestamp, final Object value) {
   }
 
-  public void beforeBatchInsert(final long[] timestamps, final Object[] values) {
+  /**
+   * This hook will be called if {@link Trigger#conditionBeforeInsertTablet(long[], Object[])}
+   * returns {@code true}. Modify params in this method may cause undefined behavior.
+   *
+   * @param timestamps All timestamps in the tablet to be inserted.
+   * @param values All values in the tablet to be inserted.
+   */
+  public void actionBeforeInsertTablet(final long[] timestamps, final Object[] values) {
   }
 
-  public void afterBatchInsert(final long[] timestamps, final Object[] values) {
+  /**
+   * This hook will be called if {@link Trigger#conditionAfterInsertTablet(long[], Object[])}
+   * returns {@code true}. Modify params in this method may cause undefined behavior.
+   *
+   * @param timestamps All timestamps in the inserted tablet.
+   * @param values All values in the inserted tablet.
+   */
+  public void actionAfterInsertTablet(final long[] timestamps, final Object[] values) {
   }
 
-  public void beforeDelete(final long timestamp) {
+  /**
+   * This hook will be called if {@link Trigger#conditionBeforeDelete(long)} returns {@code true}.
+   *
+   * @param timestamp The timestamp in the delete operation.
+   */
+  public void actionBeforeDelete(final long timestamp) {
   }
 
-  public void afterDelete(final long timestamp) {
+  /**
+   * This hook will be called if {@link Trigger#conditionAfterDelete(long)} returns {@code true}.
+   *
+   * @param timestamp The timestamp in the delete operation.
+   */
+  public void actionAfterDelete(final long timestamp) {
   }
 
-  public AsyncTriggerRejectionPolicy getRejectionPolicy(AsyncTriggerTask task) {
+  public RejectionPolicy rejectionPolicy(AsyncTriggerTask task) {
     switch (task.getHookID()) {
-      case BEFORE_INSERT:
-      case AFTER_INSERT:
-      case BEFORE_BATCH_INSERT:
-      case AFTER_BATCH_INSERT:
+      case BEFORE_INSERT_RECORD:
+      case AFTER_INSERT_RECORD:
+      case BEFORE_INSERT_TABLET:
+      case AFTER_INSERT_TABLET:
       case BEFORE_DELETE:
       case AFTER_DELETE:
       default:
-        return AsyncTriggerRejectionPolicy.ENQUEUE;
+        return RejectionPolicy.ENQUEUE;
     }
   }
 }

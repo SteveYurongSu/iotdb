@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.trigger.async;
 
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
-import org.apache.iotdb.db.trigger.definition.AsyncTriggerRejectionPolicy;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger.RejectionPolicy;
 import org.apache.iotdb.db.trigger.definition.HookID;
 
 public class AsyncTriggerTask {
@@ -116,7 +116,7 @@ public class AsyncTriggerTask {
     return (Double[]) values;
   }
 
-  public AsyncTriggerRejectionPolicy getRejectionPolicy() {
-    return trigger.getRejectionPolicy(this);
+  public RejectionPolicy getRejectionPolicy() {
+    return trigger.rejectionPolicy(this);
   }
 }

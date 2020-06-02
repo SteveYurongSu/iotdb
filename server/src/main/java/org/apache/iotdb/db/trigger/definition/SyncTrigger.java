@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.trigger.definition;
 
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-
 public abstract class SyncTrigger extends Trigger {
 
   public SyncTrigger(String path, String id, int enabledHooks,
@@ -34,25 +31,70 @@ public abstract class SyncTrigger extends Trigger {
     return true;
   }
 
-  public SyncTriggerExecutionResult beforeInsert(final long timestamp, final DataPoint value) {
-    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+  /**
+   * This hook will be called if {@link Trigger#conditionBeforeInsertRecord(long, Object)} returns
+   * {@code true}.
+   *
+   * @param timestamp The timestamp of the data point to be inserted.
+   * @param value The value of the data point to be inserted.
+   * @return The actual value to be inserted. Return {@code null} to discard the whole record (all
+   * data points which have the same timestamp in the insert operation). Please make sure the return
+   * value has the same type as the param {@code value}.
+   */
+  public Object actionBeforeInsertRecord(final long timestamp, final Object value) {
+    return value;
   }
 
-  public void afterInsert(final long timestamp, final Object value) {
+  /**
+   * This hook will be called if {@link Trigger#conditionAfterInsertRecord(long, Object)} returns
+   * {@code true}.
+   *
+   * @param timestamp The timestamp of the inserted data point.
+   * @param value The value of the inserted data point.
+   */
+  public void actionAfterInsertRecord(final long timestamp, final Object value) {
   }
 
-  public SyncTriggerExecutionResult beforeBatchInsert(final long[] timestamps,
-      final Object[] values) {
-    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+  /**
+   * This hook will be called if {@link Trigger#conditionBeforeInsertTablet(long[], Object[])}
+   * returns {@code true}. Modify {@code timestamps} in this method may cause undefined behavior.
+   *
+   * @param timestamps All timestamps in the tablet to be inserted.
+   * @param values All values in the tablet to be inserted.
+   * @return The actual values to be inserted. Return {@code null} to terminate the tablet insert.
+   * Please make sure the return value has the same type as the param {@code values}. The length of
+   * the return array should always be the same as the length of {@code timestamps}.
+   */
+  public Object[] actionBeforeInsertTablet(final long[] timestamps, final Object[] values) {
+    return values;
   }
 
-  public void afterBatchInsert(final long[] timestamps, final Object[] values) {
+  /**
+   * This hook will be called if {@link Trigger#conditionAfterInsertTablet(long[], Object[])}
+   * returns {@code true}. Modify params in this method may cause undefined behavior.
+   *
+   * @param timestamps All timestamps in the inserted tablet.
+   * @param values All values in the inserted tablet.
+   */
+  public void actionAfterInsertTablet(final long[] timestamps, final Object[] values) {
   }
 
-  public SyncTriggerExecutionResult beforeDelete(final LongDataPoint timestamp) {
-    return SyncTriggerExecutionResult.DATA_POINT_NOT_CHANGED;
+  /**
+   * This hook will be called if {@link Trigger#conditionBeforeDelete(long)} returns {@code true}.
+   *
+   * @param timestamp The timestamp in the delete operation.
+   * @return The actual timestamp in the delete operation. Return {@code null} to terminate the
+   * delete operation.
+   */
+  public Long actionBeforeDelete(final long timestamp) {
+    return timestamp;
   }
 
-  public void afterDelete(final long timestamp) {
+  /**
+   * This hook will be called if {@link Trigger#conditionAfterDelete(long)} returns {@code true}.
+   *
+   * @param timestamp The timestamp in the delete operation.
+   */
+  public void actionAfterDelete(final long timestamp) {
   }
 }

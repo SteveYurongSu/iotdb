@@ -25,7 +25,7 @@ import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.trigger.TriggerInstanceLoadException;
 import org.apache.iotdb.db.trigger.definition.AsyncTrigger;
-import org.apache.iotdb.db.trigger.definition.AsyncTriggerRejectionPolicy;
+import org.apache.iotdb.db.trigger.definition.AsyncTrigger.RejectionPolicy;
 
 public class AsyncTriggerExecutionQueue extends WrappedRunnable {
 
@@ -52,7 +52,7 @@ public class AsyncTriggerExecutionQueue extends WrappedRunnable {
 
   public boolean submit(AsyncTriggerTask task) {
     if (maxTaskNumber < taskNumber.get() && task.getRejectionPolicy()
-        .equals(AsyncTriggerRejectionPolicy.DISCARD)) {
+        .equals(RejectionPolicy.DISCARD)) {
       return false;
     }
     addTask(task);
