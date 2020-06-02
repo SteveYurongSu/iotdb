@@ -129,6 +129,7 @@
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
         <dom4j.version>2.1.1</dom4j.version>
         <simplejavamail.version>6.0.4</simplejavamail.version>
+        <moquette.version>0.13</moquette.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -475,6 +476,11 @@
                 <groupId>org.simplejavamail</groupId>
                 <artifactId>simple-java-mail</artifactId>
                 <version>${simplejavamail.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.moquette</groupId>
+                <artifactId>moquette-broker</artifactId>
+                <version>${moquette.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
