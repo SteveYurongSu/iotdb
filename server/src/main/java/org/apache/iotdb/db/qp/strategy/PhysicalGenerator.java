@@ -68,6 +68,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.HiFiQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -374,6 +375,14 @@ public class PhysicalGenerator {
       }
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
+    } else if (queryOperator.isHiFiQuery()) {
+      queryPlan = new HiFiQueryPlan();
+      ((HiFiQueryPlan) queryPlan)
+          .setHiFiWeightOperatorName(queryOperator.getSelectOperator().getHiFiWeightOperatorName());
+      ((HiFiQueryPlan) queryPlan)
+          .setHiFiSampleOperatorName(queryOperator.getSelectOperator().getHiFiSampleOperatorName());
+      ((HiFiQueryPlan) queryPlan)
+          .setHiFiSampleSize(queryOperator.getSelectOperator().getHiFiSampleSize());
     } else {
       queryPlan = new RawDataQueryPlan();
     }

@@ -99,6 +99,8 @@ selectElements
     | suffixPath (COMMA suffixPath)* #selectElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     | lastClause #lastElement
+    | HIFI LR_BRACKET weightOperator=STRING_LITERAL COMMA sampleOperartor=STRING_LITERAL COMMA
+    sampleSize=INT RR_BRACKET suffixPath #hifiElement
     ;
 
 functionCall
@@ -881,6 +883,10 @@ FALSE
 
 LATEST
     : L A T E S T
+    ;
+
+HIFI
+    : H I F I
     ;
 
 //============================

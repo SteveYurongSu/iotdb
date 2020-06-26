@@ -32,6 +32,10 @@ public final class SelectOperator extends Operator {
   private List<Path> suffixList;
   private List<String> aggregations;
   private boolean lastQuery;
+  private boolean hiFiQuery;
+  private String hiFiWeightOperatorName;
+  private String hiFiSampleOperatorName;
+  private int hiFiSampleSize;
 
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
@@ -42,6 +46,7 @@ public final class SelectOperator extends Operator {
     suffixList = new ArrayList<>();
     aggregations = new ArrayList<>();
     lastQuery = false;
+    hiFiQuery = false;
   }
 
   public void addSelectPath(Path suffixPath) {
@@ -73,5 +78,39 @@ public final class SelectOperator extends Operator {
     return suffixList;
   }
 
-  public boolean isLastQuery() {return this.lastQuery; }
+  public boolean isLastQuery() {
+    return this.lastQuery;
+  }
+
+  public boolean isHiFiQuery() {
+    return hiFiQuery;
+  }
+
+  public void setHiFiQuery(boolean hiFiQuery) {
+    this.hiFiQuery = hiFiQuery;
+  }
+
+  public String getHiFiWeightOperatorName() {
+    return hiFiWeightOperatorName;
+  }
+
+  public void setHiFiWeightOperatorName(String hiFiWeightOperatorName) {
+    this.hiFiWeightOperatorName = hiFiWeightOperatorName;
+  }
+
+  public String getHiFiSampleOperatorName() {
+    return hiFiSampleOperatorName;
+  }
+
+  public void setHiFiSampleOperatorName(String hiFiSampleOperatorName) {
+    this.hiFiSampleOperatorName = hiFiSampleOperatorName;
+  }
+
+  public int getHiFiSampleSize() {
+    return hiFiSampleSize;
+  }
+
+  public void setHiFiSampleSize(int hiFiSampleSize) {
+    this.hiFiSampleSize = hiFiSampleSize;
+  }
 }

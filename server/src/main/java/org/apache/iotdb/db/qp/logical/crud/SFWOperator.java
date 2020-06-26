@@ -33,6 +33,7 @@ public abstract class SFWOperator extends RootOperator {
   private FilterOperator filterOperator;
   private boolean hasAggregation = false;
   private boolean lastQuery = false;
+  private boolean hiFiQuery = false;
 
   public SFWOperator(int tokenIntType) {
     super(tokenIntType);
@@ -61,6 +62,9 @@ public abstract class SFWOperator extends RootOperator {
     }
     if (sel.isLastQuery()) {
       lastQuery = true;
+    }
+    if (sel.isHiFiQuery()) {
+      hiFiQuery = true;
     }
   }
 
@@ -91,5 +95,9 @@ public abstract class SFWOperator extends RootOperator {
 
   public boolean isLastQuery() {
     return lastQuery;
+  }
+
+  public boolean isHiFiQuery() {
+    return hiFiQuery;
   }
 }

@@ -98,6 +98,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByTimeClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.HifiElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
@@ -1261,6 +1262,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       Path path = parseSuffixPath(suffixPath);
       selectOp.addSelectPath(path);
     }
+    queryOp.setSelectOperator(selectOp);
+  }
+
+  @Override
+  public void enterHifiElement(HifiElementContext ctx) {
+    super.enterHifiElement(ctx);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp.setHiFiQuery(true);
+    selectOp.setHiFiWeightOperatorName(removeStringQuote(ctx.weightOperator.getText()));
+    selectOp.setHiFiSampleOperatorName(removeStringQuote(ctx.sampleOperartor.getText()));
+    selectOp.setHiFiSampleSize(Integer.parseInt(ctx.sampleSize.getText()));
+    selectOp.addSelectPath(parseSuffixPath(ctx.suffixPath()));
     queryOp.setSelectOperator(selectOp);
   }
 
