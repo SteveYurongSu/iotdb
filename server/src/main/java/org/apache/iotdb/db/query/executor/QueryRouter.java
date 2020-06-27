@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.groupby.*;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -82,6 +82,40 @@ public class QueryRouter implements IQueryRouter {
 
   protected RawDataQueryExecutor getRawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     return new RawDataQueryExecutor(queryPlan);
+  }
+
+  @Override
+  public QueryDataSet hiFiQuery(HiFiQueryPlan queryPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException {
+    IExpression expression = queryPlan.getExpression();
+    IExpression optimizedExpression;
+    try {
+      optimizedExpression = expression == null ? null : ExpressionOptimizer.getInstance().optimize(
+          expression, queryPlan.getDeduplicatedPaths());
+    } catch (QueryFilterOptimizationException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+    queryPlan.setExpression(optimizedExpression);
+
+    AggregationPlan internalAggregationPlan = queryPlan.getAggregationPlan();
+    long aggregationQueryId = QueryResourceManager.getInstance().assignQueryId(true);
+    QueryContext aggregationQueryContext = new QueryContext(aggregationQueryId);
+    AggregationExecutor aggregationExecutor = getAggregationExecutor(internalAggregationPlan);
+
+    boolean executeWithValueFilter =
+        optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME;
+    QueryDataSet aggregationQueryDataSet;
+    if (executeWithValueFilter) {
+      aggregationQueryDataSet = aggregationExecutor
+          .executeWithValueFilter(aggregationQueryContext, internalAggregationPlan);
+      queryPlan.setCountsAndBucketWeights(aggregationQueryDataSet);
+      return (new HiFiQueryExecutor(queryPlan)).executeWithValueFilter(context, queryPlan);
+    } else {
+      aggregationQueryDataSet = aggregationExecutor
+          .executeWithoutValueFilter(aggregationQueryContext, internalAggregationPlan);
+      queryPlan.setCountsAndBucketWeights(aggregationQueryDataSet);
+      return (new HiFiQueryExecutor(queryPlan)).executeWithoutValueFilter(context, queryPlan);
+    }
   }
 
   @Override

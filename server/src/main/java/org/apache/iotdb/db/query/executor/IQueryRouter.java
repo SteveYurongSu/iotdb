@@ -37,6 +37,12 @@ public interface IQueryRouter {
       throws StorageEngineException, QueryProcessException;
 
   /**
+   * Execute HiFi query.
+   */
+  QueryDataSet hiFiQuery(HiFiQueryPlan queryPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException, IOException;
+
+  /**
    * Execute aggregation query.
    */
   QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)

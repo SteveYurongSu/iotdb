@@ -19,14 +19,58 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 public class HiFiQueryPlan extends RawDataQueryPlan {
 
   private String hiFiWeightOperatorName;
   private String hiFiSampleOperatorName;
   private int hiFiSampleSize;
+  private boolean aggregationPlanHasSetup;
+  private AggregationPlan aggregationPlan;
+  private long[] counts;
+  private double[] bucketWeights;
 
   public HiFiQueryPlan() {
     super();
+    setOperatorType(OperatorType.HIFI);
+    aggregationPlanHasSetup = false;
+    aggregationPlan = new AggregationPlan();
+  }
+
+  public AggregationPlan getAggregationPlan() {
+    if (!aggregationPlanHasSetup) {
+      setupInternalAggregationPlan();
+      aggregationPlanHasSetup = true;
+    }
+    return aggregationPlan;
+  }
+
+  public void setCountsAndBucketWeights(QueryDataSet queryDataSet) throws IOException {
+    counts = new long[paths.size()];
+    bucketWeights = new double[paths.size()];
+    List<Field> fields = queryDataSet.next().getFields();
+    for (int i = 0; i < paths.size(); ++i) {
+      long count = fields.get(i).getLongV();
+      counts[i] = count;
+      bucketWeights[i] = (double) count / hiFiSampleSize;
+    }
+  }
+
+  public long[] getCounts() {
+    return counts;
+  }
+
+  public double[] getBucketWeights() {
+    return bucketWeights;
   }
 
   public String getHiFiWeightOperatorName() {
@@ -51,5 +95,21 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
 
   public void setHiFiSampleSize(int hiFiSampleSize) {
     this.hiFiSampleSize = hiFiSampleSize;
+  }
+
+  private void setupInternalAggregationPlan() {
+    aggregationPlan.setOperatorType(OperatorType.AGGREGATION);
+    aggregationPlan.setQuery(true);
+    aggregationPlan.setAlignByTime(true);
+    aggregationPlan.setPaths(paths);
+    List<TSDataType> dataTypes = new ArrayList<>(paths.size());
+    Collections.fill(dataTypes, TSDataType.INT64);
+    aggregationPlan.setDataTypes(dataTypes);
+    aggregationPlan.setExpression(getExpression());
+    List<String> aggregations = new ArrayList<>(paths.size());
+    Collections.fill(aggregations, SQLConstant.COUNT);
+    aggregationPlan.setAggregations(aggregations);
+    aggregationPlan.setDeduplicatedAggregations(aggregations);
+    aggregationPlan.setLevel(0);
   }
 }

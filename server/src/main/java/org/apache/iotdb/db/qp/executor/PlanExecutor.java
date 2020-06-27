@@ -96,6 +96,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.HiFiQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
@@ -323,6 +324,8 @@ public class PlanExecutor implements IPlanExecutor {
         queryDataSet = queryRouter.fill(fillQueryPlan, context);
       } else if (queryPlan instanceof LastQueryPlan) {
         queryDataSet = queryRouter.lastQuery((LastQueryPlan) queryPlan, context);
+      } else if (queryPlan instanceof HiFiQueryPlan) {
+        queryDataSet = queryRouter.hiFiQuery((HiFiQueryPlan) queryPlan, context);
       } else {
         queryDataSet = queryRouter.rawDataQuery((RawDataQueryPlan) queryPlan, context);
       }
