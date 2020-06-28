@@ -64,6 +64,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.HiFiQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
@@ -520,8 +521,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
-   *             AuthorPlan
+   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, HiFiQueryPlan,
+   *             some AuthorPlan
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
@@ -540,6 +541,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
         if (plan.getOperatorType() == OperatorType.GROUPBYTIME) {
           throw new QueryProcessException("Group by doesn't support disable align clause.");
+        }
+        if (plan.getOperatorType() == OperatorType.HIFI) {
+          throw new QueryProcessException("HIFI query doesn't support disable align clause.");
         }
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
@@ -715,6 +719,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
+      case HIFI:
         for (Path path : paths) {
           if (path.getAlias() != null) {
             respColumns.add(path.getFullPathWithAlias());
@@ -863,6 +868,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSQueryDataSet result;
 
     if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
+      // TODO
       WatermarkEncoder encoder;
       if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
         encoder = new GroupedLSBWatermarkEncoder(config);
@@ -878,9 +884,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
       }
     } else {
+      // TODO
       if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
         // optimize for query without value filter
         result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
+      } else if (queryDataSet instanceof HiFiQueryDataSetWithoutValueFilter) {
+        result = ((HiFiQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }

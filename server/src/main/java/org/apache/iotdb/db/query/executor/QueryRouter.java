@@ -108,12 +108,12 @@ public class QueryRouter implements IQueryRouter {
     if (executeWithValueFilter) {
       aggregationQueryDataSet = aggregationExecutor
           .executeWithValueFilter(aggregationQueryContext, internalAggregationPlan);
-      queryPlan.setCountsAndBucketWeights(aggregationQueryDataSet);
+      queryPlan.setCountsAndAverageBucketSize(aggregationQueryDataSet);
       return (new HiFiQueryExecutor(queryPlan)).executeWithValueFilter(context, queryPlan);
     } else {
       aggregationQueryDataSet = aggregationExecutor
           .executeWithoutValueFilter(aggregationQueryContext, internalAggregationPlan);
-      queryPlan.setCountsAndBucketWeights(aggregationQueryDataSet);
+      queryPlan.setCountsAndAverageBucketSize(aggregationQueryDataSet);
       return (new HiFiQueryExecutor(queryPlan)).executeWithoutValueFilter(context, queryPlan);
     }
   }

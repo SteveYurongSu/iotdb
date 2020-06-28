@@ -35,9 +35,9 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
   private String hiFiSampleOperatorName;
   private int hiFiSampleSize;
   private boolean aggregationPlanHasSetup;
-  private AggregationPlan aggregationPlan;
+  private final AggregationPlan aggregationPlan;
   private long[] counts;
-  private double[] bucketWeights;
+  private double[] averageBucketSize;
 
   public HiFiQueryPlan() {
     super();
@@ -54,14 +54,14 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
     return aggregationPlan;
   }
 
-  public void setCountsAndBucketWeights(QueryDataSet queryDataSet) throws IOException {
+  public void setCountsAndAverageBucketSize(QueryDataSet queryDataSet) throws IOException {
     counts = new long[paths.size()];
-    bucketWeights = new double[paths.size()];
+    averageBucketSize = new double[paths.size()];
     List<Field> fields = queryDataSet.next().getFields();
     for (int i = 0; i < paths.size(); ++i) {
       long count = fields.get(i).getLongV();
       counts[i] = count;
-      bucketWeights[i] = (double) count / hiFiSampleSize;
+      averageBucketSize[i] = (double) count / hiFiSampleSize;
     }
   }
 
@@ -69,8 +69,8 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
     return counts;
   }
 
-  public double[] getBucketWeights() {
-    return bucketWeights;
+  public double[] getAverageBucketSize() {
+    return averageBucketSize;
   }
 
   public String getHiFiWeightOperatorName() {
