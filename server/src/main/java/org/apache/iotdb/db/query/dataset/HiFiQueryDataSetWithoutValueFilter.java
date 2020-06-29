@@ -41,7 +41,9 @@ import org.apache.iotdb.tsfile.read.common.ExceptionBatchData;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.SignalBatchData;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,8 +124,6 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
 
   private final List<ManagedSeriesReader> seriesReaderList;
 
-  private TreeSet<Long> timeHeap;
-
   // Blocking queue list for each batch reader
   private final BlockingQueue<BatchData>[] blockingQueueArray;
 
@@ -142,6 +142,8 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
   private final SampleOperator<?>[] sampleOperators;
 
   private final double[] bucketWeights;
+
+  private static final int FLAG = 0x01;
 
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
@@ -177,7 +179,6 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void init() throws IOException, InterruptedException {
-    timeHeap = new TreeSet<>();
     for (int i = 0; i < seriesReaderList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
@@ -187,11 +188,6 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       fillCache(i);
-      // try to put the next timestamp into the heap
-      if (cachedBatchDataArray[i] != null && cachedBatchDataArray[i].hasCurrent()) {
-        long time = cachedBatchDataArray[i].currentTime();
-        timeHeap.add(time);
-      }
     }
   }
 
@@ -200,28 +196,37 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
    * buffers
    */
   public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
-      throws IOException, InterruptedException { // todo: encoder, rowLimit, fetchSize ...
+      throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
-    List<Long> originalTimestamps = new ArrayList<>();
+
+    List<Long>[] originalTimestampsList = new List[seriesNum];
     List[] originalValuesList = new List[seriesNum];
-    List<Byte>[] originalBitmapList = new List[seriesNum];
     List<Double>[] originalWeightsList = new List[seriesNum];
+
+    List<Long>[] sampledTimestampsList = new List[seriesNum];
+    List[] sampledValuesList = new List[seriesNum];
+
     PublicBAOS timeBAOS = new PublicBAOS();
     PublicBAOS[] valueBAOSList = new PublicBAOS[seriesNum];
     PublicBAOS[] bitmapBAOSList = new PublicBAOS[seriesNum];
+
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
+      originalTimestampsList[seriesIndex] = new ArrayList<>();
       originalValuesList[seriesIndex] = new ArrayList<>();
-      originalBitmapList[seriesIndex] = new ArrayList<>();
       originalWeightsList[seriesIndex] = new ArrayList<>();
+      sampledTimestampsList[seriesIndex] = new ArrayList<>();
+      sampledValuesList[seriesIndex] = new ArrayList<>();
       valueBAOSList[seriesIndex] = new PublicBAOS();
       bitmapBAOSList[seriesIndex] = new PublicBAOS();
     }
 
-    fetch(originalTimestamps, originalValuesList, originalBitmapList);
-    calculatePointWeightsAndBucketWeights(originalTimestamps, originalValuesList,
-        originalBitmapList, originalWeightsList);
-    hiFiSample(originalTimestamps, originalValuesList, originalBitmapList, originalWeightsList,
-        timeBAOS, valueBAOSList, bitmapBAOSList);
+    fetch(originalTimestampsList, originalValuesList);
+    calculatePointWeightsAndBucketWeights(originalTimestampsList, originalValuesList,
+        originalWeightsList);
+    hiFiSample(originalTimestampsList, originalValuesList, originalWeightsList,
+        sampledTimestampsList, sampledValuesList);
+    fillBAOS(sampledTimestampsList, sampledValuesList, timeBAOS, valueBAOSList, bitmapBAOSList,
+        fetchSize, encoder);
 
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     // set time buffer
@@ -243,80 +248,173 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
-  private void fetch(List<Long> originalTimestamps, List<Number>[] originalValuesList,
-      List<Byte>[] originalBitmapList) throws IOException, InterruptedException {
+  private void fetch(List<Long>[] originalTimestampsList, List<Number>[] originalValuesList)
+      throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
+    for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
+      while (cachedBatchDataArray[seriesIndex] != null
+          && cachedBatchDataArray[seriesIndex].hasCurrent()) {
+        originalTimestampsList[seriesIndex].add(cachedBatchDataArray[seriesIndex].currentTime());
+        TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
+        switch (type) {
+          case INT32:
+            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getInt());
+            break;
+          case INT64:
+            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getLong());
+            break;
+          case FLOAT:
+            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getFloat());
+            break;
+          case DOUBLE:
+            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getDouble());
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", type));
+        }
 
-    while (!timeHeap.isEmpty()) {
-      Long minTime = timeHeap.pollFirst();
-      originalTimestamps.add(minTime);
-
-      for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
-        if (cachedBatchDataArray[seriesIndex] == null
-            || !cachedBatchDataArray[seriesIndex].hasCurrent()
-            || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-          // current batch is empty or does not have value at minTime
-          originalBitmapList[seriesIndex].add((byte) 0B0);
-        } else {
-          // current batch has value at minTime, consume current value
-          originalBitmapList[seriesIndex].add((byte) 0B1);
-          TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
-          switch (type) {
-            case INT32:
-              originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getInt());
-              break;
-            case INT64:
-              originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getLong());
-              break;
-            case FLOAT:
-              originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getFloat());
-              break;
-            case DOUBLE:
-              originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getDouble());
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", type));
-          }
-
-          // move next
-          cachedBatchDataArray[seriesIndex].next();
-          // get next batch if current batch is empty and still have remaining batch data in queue
-          if (!cachedBatchDataArray[seriesIndex].hasCurrent()
-              && !noMoreDataInQueueArray[seriesIndex]) {
-            fillCache(seriesIndex);
-          }
-          // try to put the next timestamp into the heap
-          if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
-          }
+        // move next
+        cachedBatchDataArray[seriesIndex].next();
+        // get next batch if current batch is empty and still have remaining batch data in queue
+        if (!cachedBatchDataArray[seriesIndex].hasCurrent()
+            && !noMoreDataInQueueArray[seriesIndex]) {
+          fillCache(seriesIndex);
         }
       }
     }
   }
 
-  private void calculatePointWeightsAndBucketWeights(List<Long> originalTimestamps,
-      List[] originalValuesList, List<Byte>[] originalBitmapList,
-      List<Double>[] originalWeightsList) {
+  private void calculatePointWeightsAndBucketWeights(List<Long>[] originalTimestampsList,
+      List[] originalValuesList, List<Double>[] originalWeightsList) {
     int seriesNum = seriesReaderList.size();
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
-      weightOperators[seriesIndex].calculate(originalTimestamps, originalValuesList[seriesIndex],
-          originalBitmapList[seriesIndex], originalWeightsList[seriesIndex]);
+      weightOperators[seriesIndex]
+          .calculate(originalTimestampsList[seriesIndex], originalValuesList[seriesIndex],
+              originalWeightsList[seriesIndex]);
       double bucketSize = queryPlan.getAverageBucketSize()[seriesIndex];
       bucketWeights[seriesIndex] =
           bucketSize <= 1 ? 0 : bucketSize * weightOperators[seriesIndex].getCurrentAverageWeight();
     }
   }
 
-  private void hiFiSample(List<Long> originalTimestamps, List[] originalValuesList,
-      List<Byte>[] originalBitmapList, List<Double>[] originalWeightsList, PublicBAOS timeBAOS,
-      PublicBAOS[] valueBAOSList, PublicBAOS[] bitmapBAOSList) {
+  private void hiFiSample(List<Long>[] originalTimestampsList, List[] originalValuesList,
+      List<Double>[] originalWeightsList, List<Long>[] sampledTimestampsList,
+      List[] sampledValuesList) {
     int seriesNum = seriesReaderList.size();
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
-      sampleOperators[seriesIndex].sample(originalTimestamps, originalValuesList[seriesIndex],
-          originalBitmapList[seriesIndex], originalWeightsList[seriesIndex], timeBAOS,
-          valueBAOSList[seriesIndex], bitmapBAOSList[seriesIndex], getDataTypes().get(seriesIndex),
+      sampleOperators[seriesIndex].sample(originalTimestampsList[seriesIndex],
+          originalValuesList[seriesIndex], originalWeightsList[seriesIndex],
+          sampledTimestampsList[seriesIndex], sampledValuesList[seriesIndex],
           bucketWeights[seriesIndex]);
+    }
+  }
+
+  private void fillBAOS(List<Long>[] sampledTimestampsList, List<Number>[] sampledValuesList,
+      PublicBAOS timeBAOS, PublicBAOS[] valueBAOSList, PublicBAOS[] bitmapBAOSList, int fetchSize,
+      WatermarkEncoder encoder)
+      throws IOException {
+    TreeSet<Long> timeHeap = new TreeSet<>();
+    for (List<Long> sampledTimestamps : sampledTimestampsList) {
+      timeHeap.addAll(sampledTimestamps);
+    }
+
+    int seriesNum = seriesReaderList.size();
+    int[] currentBitmapList = new int[seriesNum]; // used to record a bitmap for every 8 row records
+    int[] currentIndexList = new int[seriesNum];
+    int rowCount = 0;
+    while (rowCount < fetchSize) {
+      if ((rowLimit > 0 && alreadyReturnedRowNum >= rowLimit) || timeHeap.isEmpty()) {
+        break;
+      }
+
+      long minTime = timeHeap.pollFirst();
+      if (rowOffset == 0) {
+        timeBAOS.write(BytesUtils.longToBytes(minTime));
+      }
+
+      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+        int currentIndex = currentIndexList[seriesIndex];
+        if (sampledTimestampsList[seriesIndex].size() <= currentIndex
+            || sampledTimestampsList[seriesIndex].get(currentIndex) != minTime) {
+          // current series does not have value at minTime
+          if (rowOffset == 0) {
+            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
+          }
+        } else {
+          // current series has value at minTime, write the value info BAOS
+          if (rowOffset == 0) {
+            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | FLAG;
+            TSDataType type = getDataTypes().get(seriesIndex);
+            switch (type) {
+              case INT32:
+                int intValue = sampledValuesList[seriesIndex].get(currentIndex).intValue();
+                if (encoder != null && encoder.needEncode(minTime)) {
+                  intValue = encoder.encodeInt(intValue, minTime);
+                }
+                ReadWriteIOUtils.write(intValue, valueBAOSList[seriesIndex]);
+                break;
+              case INT64:
+                long longValue = sampledValuesList[seriesIndex].get(currentIndex).longValue();
+                if (encoder != null && encoder.needEncode(minTime)) {
+                  longValue = encoder.encodeLong(longValue, minTime);
+                }
+                ReadWriteIOUtils.write(longValue, valueBAOSList[seriesIndex]);
+                break;
+              case FLOAT:
+                float floatValue = sampledValuesList[seriesIndex].get(currentIndex).floatValue();
+                if (encoder != null && encoder.needEncode(minTime)) {
+                  floatValue = encoder.encodeFloat(floatValue, minTime);
+                }
+                ReadWriteIOUtils.write(floatValue, valueBAOSList[seriesIndex]);
+                break;
+              case DOUBLE:
+                double doubleValue = sampledValuesList[seriesIndex].get(currentIndex).doubleValue();
+                if (encoder != null && encoder.needEncode(minTime)) {
+                  doubleValue = encoder.encodeDouble(doubleValue, minTime);
+                }
+                ReadWriteIOUtils.write(doubleValue, valueBAOSList[seriesIndex]);
+                break;
+              default:
+                throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", type));
+            }
+          }
+          // update current index
+          ++currentIndexList[seriesIndex];
+        }
+      }
+
+      if (rowOffset == 0) {
+        rowCount++;
+        if (rowCount % 8 == 0) {
+          for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+            ReadWriteIOUtils
+                .write((byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
+            // we should clear the bitmap every 8 row record
+            currentBitmapList[seriesIndex] = 0;
+          }
+        }
+        if (rowLimit > 0) {
+          alreadyReturnedRowNum++;
+        }
+      } else {
+        rowOffset--;
+      }
+    }
+
+    /*
+     * feed the bitmap with remaining 0 in the right
+     * if current bitmap is 00011111 and remaining is 3, after feeding the bitmap is 11111000
+     */
+    if (rowCount > 0) {
+      int remaining = rowCount % 8;
+      if (remaining != 0) {
+        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          ReadWriteIOUtils.write((byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
+              bitmapBAOSList[seriesIndex]);
+        }
+      }
     }
   }
 
@@ -366,7 +464,8 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
    */
   @Override
   protected boolean hasNextWithoutConstraint() {
-    return !timeHeap.isEmpty();
+    return false;
+//    return !timeHeap.isEmpty();
   }
 
   /**
@@ -374,45 +473,46 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
    */
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
-    int seriesNum = seriesReaderList.size();
-
-    long minTime = timeHeap.pollFirst();
-
-    RowRecord record = new RowRecord(minTime);
-
-    for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
-      if (cachedBatchDataArray[seriesIndex] == null
-          || !cachedBatchDataArray[seriesIndex].hasCurrent()
-          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-        record.addField(null);
-      } else {
-        TSDataType dataType = dataTypes.get(seriesIndex);
-        record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
-
-        // move next
-        cachedBatchDataArray[seriesIndex].next();
-
-        // get next batch if current batch is empty and still have remaining batch data in queue
-        if (!cachedBatchDataArray[seriesIndex].hasCurrent()
-            && !noMoreDataInQueueArray[seriesIndex]) {
-          try {
-            fillCache(seriesIndex);
-          } catch (InterruptedException e) {
-            LOGGER.error("Interrupted while taking from the blocking queue: ", e);
-            Thread.currentThread().interrupt();
-          } catch (IOException e) {
-            LOGGER.error("Got IOException", e);
-            throw e;
-          }
-        }
-
-        // try to put the next timestamp into the heap
-        if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
-          timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
-        }
-      }
-    }
-
-    return record;
+    return null;
+//    int seriesNum = seriesReaderList.size();
+//
+//    long minTime = timeHeap.pollFirst();
+//
+//    RowRecord record = new RowRecord(minTime);
+//
+//    for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
+//      if (cachedBatchDataArray[seriesIndex] == null
+//          || !cachedBatchDataArray[seriesIndex].hasCurrent()
+//          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+//        record.addField(null);
+//      } else {
+//        TSDataType dataType = dataTypes.get(seriesIndex);
+//        record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
+//
+//        // move next
+//        cachedBatchDataArray[seriesIndex].next();
+//
+//        // get next batch if current batch is empty and still have remaining batch data in queue
+//        if (!cachedBatchDataArray[seriesIndex].hasCurrent()
+//            && !noMoreDataInQueueArray[seriesIndex]) {
+//          try {
+//            fillCache(seriesIndex);
+//          } catch (InterruptedException e) {
+//            LOGGER.error("Interrupted while taking from the blocking queue: ", e);
+//            Thread.currentThread().interrupt();
+//          } catch (IOException e) {
+//            LOGGER.error("Got IOException", e);
+//            throw e;
+//          }
+//        }
+//
+//        // try to put the next timestamp into the heap
+//        if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
+//          timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
+//        }
+//      }
+//    }
+//
+//    return record;
   }
 }

@@ -23,12 +23,11 @@ import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public interface WeightOperator<T extends Number> {
+public interface WeightOperator<T extends Number & Comparable<? super T>> {
 
   Double SPECIAL_POINT_WEIGHT = Double.MAX_VALUE;
 
-  void calculate(List<Long> originalTimestamps, List<T> originalValues, List<Byte> originalBitmap,
-      List<Double> originalWeights);
+  void calculate(List<Long> timestamps, List<T> values, List<Double> weights);
 
   Double operator(Long time0, Long time1, Long time2, T value0, T value1, T value2);
 
@@ -51,7 +50,7 @@ public interface WeightOperator<T extends Number> {
                 String.format("Data type %s is not supported.", type));
         }
       default:
-        throw new UnsupportedOperationException("Weight operator \"" + name + "\" is unsupported");
+        throw new UnsupportedOperationException("Weight operator \"" + name + "\" is unsupported.");
     }
   }
 }

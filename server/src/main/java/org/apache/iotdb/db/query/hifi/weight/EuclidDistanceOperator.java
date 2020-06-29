@@ -21,51 +21,34 @@ package org.apache.iotdb.db.query.hifi.weight;
 
 import java.util.List;
 
-public class EuclidDistanceOperator<T extends Number> implements WeightOperator<T> {
-
-  private final static int INVALID_INDEX = -1;
+public class EuclidDistanceOperator<T extends Number & Comparable<? super T>> implements
+    WeightOperator<T> {
 
   private Double weightSum = 0d;
   private long count = 0L;
 
   @Override
-  public void calculate(List<Long> originalTimestamps, List<T> originalValues,
-      List<Byte> originalBitmap, List<Double> originalWeights) {
-    if (originalValues.size() == 0) {
+  public void calculate(List<Long> timestamps, List<T> values, List<Double> weights) {
+    if (values.size() == 0) {
       return;
-    } else if (originalValues.size() == 1) {
-      originalWeights.add(SPECIAL_POINT_WEIGHT);
-      return;
-    } else if (originalValues.size() == 2) {
-      originalWeights.add(SPECIAL_POINT_WEIGHT);
-      originalWeights.add(SPECIAL_POINT_WEIGHT);
+    } else if (values.size() == 1) {
+      weights.add(SPECIAL_POINT_WEIGHT);
       return;
     }
 
     // for the first point
-    originalWeights.add(SPECIAL_POINT_WEIGHT);
+    weights.add(SPECIAL_POINT_WEIGHT);
 
-    int lastTimestampIndex = INVALID_INDEX;
-    int currentTimestampIndex = getNextValidTimestampIndex(originalBitmap, INVALID_INDEX);
-    int nextTimestampIndex = getNextValidTimestampIndex(originalBitmap, currentTimestampIndex);
-    while (true) {
-      lastTimestampIndex = currentTimestampIndex;
-      currentTimestampIndex = nextTimestampIndex;
-      nextTimestampIndex = getNextValidTimestampIndex(originalBitmap, currentTimestampIndex);
-      if (nextTimestampIndex == INVALID_INDEX) {
-        break;
-      }
-      Double weight = operator(
-          originalTimestamps.get(lastTimestampIndex), originalTimestamps.get(currentTimestampIndex),
-          originalTimestamps.get(nextTimestampIndex), originalValues.get(lastTimestampIndex),
-          originalValues.get(currentTimestampIndex), originalValues.get(nextTimestampIndex));
-      originalWeights.add(weight);
+    for (int i = 1; i < values.size() - 1; ++i) {
+      Double weight = operator(timestamps.get(i - 1), timestamps.get(i), timestamps.get(i + 1),
+          values.get(i - 1), values.get(i), values.get(i + 1));
+      weights.add(weight);
       weightSum += weight;
       ++count;
     }
 
     // for the last point
-    originalWeights.add(SPECIAL_POINT_WEIGHT);
+    weights.add(SPECIAL_POINT_WEIGHT);
   }
 
   @Override
@@ -82,14 +65,5 @@ public class EuclidDistanceOperator<T extends Number> implements WeightOperator<
   @Override
   public Double getCurrentAverageWeight() {
     return weightSum / count;
-  }
-
-  private int getNextValidTimestampIndex(List<Byte> originalBitmap, int lastValidIndex) {
-    for (int index = lastValidIndex + 1; index < originalBitmap.size(); ++index) {
-      if (originalBitmap.get(index).equals((byte) 0B1)) {
-        return index;
-      }
-    }
-    return INVALID_INDEX;
   }
 }

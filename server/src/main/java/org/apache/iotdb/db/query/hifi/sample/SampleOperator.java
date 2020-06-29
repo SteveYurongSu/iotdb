@@ -22,18 +22,12 @@ package org.apache.iotdb.db.query.hifi.sample;
 import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-public interface SampleOperator<T extends Number> {
+public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
 
-  /**
-   * @param bucketWeight The weight of the bucket when only one point is sampled
-   */
-  void sample(List<Long> originalTimestamps, List<T> originalValuesList,
-      List<Byte> originalBitmapList, List<Double> originalWeightsList, PublicBAOS timeBAOS,
-      PublicBAOS valueBAOSList, PublicBAOS bitmapBAOSList, TSDataType type, double bucketWeight);
+  protected static final int INVALID_INDEX = -1;
 
-  static SampleOperator<?> getSampleOperator(String name, TSDataType type) {
+  public static SampleOperator<?> getSampleOperator(String name, TSDataType type) {
     switch (name.toLowerCase()) {
       case "m4":
         switch (type) {
@@ -50,7 +44,35 @@ public interface SampleOperator<T extends Number> {
                 String.format("Data type %s is not supported.", type));
         }
       default:
-        throw new UnsupportedOperationException("Sample operator \"" + name + "\" is unsupported");
+        throw new UnsupportedOperationException("Sample operator \"" + name + "\" is unsupported.");
     }
+  }
+
+  /**
+   * @param bucketWeight The weight of the bucket when only one point is sampled
+   */
+  public abstract void sample(List<Long> originalTimestamps, List<T> originalValues,
+      List<Double> originalWeights, List<Long> sampledTimestamps, List<T> sampledValues,
+      double bucketWeight);
+
+  protected abstract void sampleFromSingleBucket(List<Long> originalTimestamps,
+      List<T> originalValues, List<Long> sampledTimestamps, List<T> sampledValues,
+      final int loIndex, final int hiIndex);
+
+  protected int getNextHiIndex(List<Double> weights, final double bucketWeight,
+      final int lastHiIndex) {
+    if (weights.size() - 1 <= lastHiIndex) {
+      return INVALID_INDEX;
+    }
+    int index = lastHiIndex + 1;
+    double currentBucketWeight = 0;
+    while (index < weights.size()) {
+      currentBucketWeight += weights.get(index);
+      if (bucketWeight <= currentBucketWeight) {
+        return index;
+      }
+      ++index;
+    }
+    return weights.size() - 1;
   }
 }

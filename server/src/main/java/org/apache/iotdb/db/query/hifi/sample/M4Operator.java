@@ -20,14 +20,71 @@
 package org.apache.iotdb.db.query.hifi.sample;
 
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-public class M4Operator<T extends Number> implements SampleOperator<T> {
+public class M4Operator<T extends Number & Comparable<? super T>> extends SampleOperator<T> {
 
   @Override
-  public void sample(List<Long> originalTimestamps, List<T> originalValuesList,
-      List<Byte> originalBitmapList, List<Double> originalWeightsList, PublicBAOS timeBAOS,
-      PublicBAOS valueBAOSList, PublicBAOS bitmapBAOSList, TSDataType type, double bucketWeight) {
+  public void sample(List<Long> originalTimestamps, List<T> originalValues,
+      List<Double> originalWeights, List<Long> sampledTimestamps, List<T> sampledValues,
+      double bucketWeight) {
+    if (bucketWeight == 0) {
+      sampledTimestamps.addAll(originalTimestamps);
+      sampledValues.addAll(originalValues);
+      return;
+    }
+
+    // find a bucket[lo, hi] and sample
+    bucketWeight /= 4.0d;
+    int loIndex = 0;
+    int hiIndex = getNextHiIndex(originalWeights, bucketWeight, -1);
+    while (hiIndex != INVALID_INDEX) {
+      sampleFromSingleBucket(originalTimestamps, originalValues, sampledTimestamps, sampledValues,
+          loIndex, hiIndex);
+      loIndex = hiIndex + 1;
+      hiIndex = getNextHiIndex(originalWeights, bucketWeight, hiIndex);
+    }
+  }
+
+  @Override
+  protected void sampleFromSingleBucket(List<Long> originalTimestamps, List<T> originalValues,
+      List<Long> sampledTimestamps, List<T> sampledValues, final int loIndex, final int hiIndex) {
+    if (loIndex == hiIndex) {
+      sampledTimestamps.add(originalTimestamps.get(loIndex));
+      sampledValues.add(originalValues.get(loIndex));
+      return;
+    }
+
+    int minIndex = INVALID_INDEX;
+    int maxIndex = INVALID_INDEX;
+    T minValue = null;
+    T maxValue = null;
+    for (int i = loIndex + 1; i < hiIndex; ++i) {
+      T candidate = originalValues.get(i);
+      if (minValue == null || candidate.compareTo(minValue) < 0) {
+        minIndex = i;
+        minValue = candidate;
+      }
+      if (maxValue == null || maxValue.compareTo(candidate) < 0) {
+        maxIndex = i;
+        maxValue = candidate;
+      }
+    }
+
+    sampledTimestamps.add(originalTimestamps.get(loIndex));
+    sampledValues.add(originalValues.get(loIndex));
+
+    int smallerIndex = Math.min(minIndex, maxIndex);
+    int biggerIndex = Math.max(minIndex, maxIndex);
+    if (smallerIndex != INVALID_INDEX) {
+      sampledTimestamps.add(originalTimestamps.get(smallerIndex));
+      sampledValues.add(originalValues.get(smallerIndex));
+      if (biggerIndex != smallerIndex) {
+        sampledTimestamps.add(originalTimestamps.get(biggerIndex));
+        sampledValues.add(originalValues.get(biggerIndex));
+      }
+    }
+
+    sampledTimestamps.add(originalTimestamps.get(hiIndex));
+    sampledValues.add(originalValues.get(hiIndex));
   }
 }
