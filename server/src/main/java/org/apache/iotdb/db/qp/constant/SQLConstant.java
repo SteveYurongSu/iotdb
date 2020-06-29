@@ -68,6 +68,12 @@ public class SQLConstant {
 
   public static final String ALL = "all";
 
+  // names of HiFi query weight operators
+  public static final String EUCLID_DISTANCE_OPERATOR = "euclid";
+  public static final String MANHATTAN_DISTANCE_OPERATOR = "manhattan";
+  public static final String TRIANGULAR_AREA_OPERATOR = "area";
+  public static final String COSINE_OPERATOR = "cos";
+
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
   public static final int KW_NOT = 3;

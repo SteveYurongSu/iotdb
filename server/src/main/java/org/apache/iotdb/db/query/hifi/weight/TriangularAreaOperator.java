@@ -19,17 +19,14 @@
 
 package org.apache.iotdb.db.query.hifi.weight;
 
-public class EuclidDistanceOperator<T extends Number & Comparable<? super T>> extends
+public class TriangularAreaOperator<T extends Number & Comparable<? super T>> extends
     WeightOperator<T> {
 
   @Override
   public Double operator(Long time0, Long time1, Long time2, T value0, T value1, T value2) {
-    long deltaT0 = time1 - time0;
-    long deltaT1 = time2 - time1;
-    double double1 = value1.doubleValue();
-    double deltaV0 = double1 - value0.doubleValue();
-    double deltaV1 = value2.doubleValue() - double1;
-    return Math.sqrt(deltaT0 * deltaT0 + deltaV0 * deltaV0)
-        + Math.sqrt(deltaT1 * deltaT1 + deltaV1 * deltaV1);
+    double v0 = value0.doubleValue();
+    double v1 = value1.doubleValue();
+    double v2 = value2.doubleValue();
+    return 0.5 * (time0 * v1 + time1 * v2 + time2 * v0 - time0 * v2 - time1 * v0 - time2 * v1);
   }
 }

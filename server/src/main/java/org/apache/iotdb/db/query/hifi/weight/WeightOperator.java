@@ -20,22 +20,49 @@
 package org.apache.iotdb.db.query.hifi.weight;
 
 import java.util.List;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public interface WeightOperator<T extends Number & Comparable<? super T>> {
+public abstract class WeightOperator<T extends Number & Comparable<? super T>> {
 
-  Double SPECIAL_POINT_WEIGHT = Double.MAX_VALUE;
+  protected Double SPECIAL_POINT_WEIGHT = Double.MAX_VALUE;
 
-  void calculate(List<Long> timestamps, List<T> values, List<Double> weights);
+  protected double weightSum = 0d;
+  protected long count = 0L;
 
-  Double operator(Long time0, Long time1, Long time2, T value0, T value1, T value2);
+  public abstract Double operator(Long time0, Long time1, Long time2, T value0, T value1, T value2);
 
-  Double getCurrentAverageWeight();
+  public void calculate(List<Long> timestamps, List<T> values, List<Double> weights) {
+    if (values.size() == 0) {
+      return;
+    } else if (values.size() == 1) {
+      weights.add(SPECIAL_POINT_WEIGHT);
+      return;
+    }
 
-  static WeightOperator<?> getWeightOperator(String name, TSDataType type) {
+    // for the first point
+    weights.add(SPECIAL_POINT_WEIGHT);
+
+    for (int i = 1; i < values.size() - 1; ++i) {
+      Double weight = operator(timestamps.get(i - 1), timestamps.get(i), timestamps.get(i + 1),
+          values.get(i - 1), values.get(i), values.get(i + 1));
+      weights.add(weight);
+      weightSum += weight;
+      ++count;
+    }
+
+    // for the last point
+    weights.add(SPECIAL_POINT_WEIGHT);
+  }
+
+  public Double getCurrentAverageWeight() {
+    return weightSum / count;
+  }
+
+  static public WeightOperator<?> getWeightOperator(String name, TSDataType type) {
     switch (name.toLowerCase()) {
-      case "euclid":
+      case SQLConstant.EUCLID_DISTANCE_OPERATOR:
         switch (type) {
           case INT32:
             return new EuclidDistanceOperator<Integer>();
@@ -45,6 +72,48 @@ public interface WeightOperator<T extends Number & Comparable<? super T>> {
             return new EuclidDistanceOperator<Float>();
           case DOUBLE:
             return new EuclidDistanceOperator<Double>();
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", type));
+        }
+      case SQLConstant.MANHATTAN_DISTANCE_OPERATOR:
+        switch (type) {
+          case INT32:
+            return new ManhattanDistanceOperator<Integer>();
+          case INT64:
+            return new ManhattanDistanceOperator<Long>();
+          case FLOAT:
+            return new ManhattanDistanceOperator<Float>();
+          case DOUBLE:
+            return new ManhattanDistanceOperator<Double>();
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", type));
+        }
+      case SQLConstant.TRIANGULAR_AREA_OPERATOR:
+        switch (type) {
+          case INT32:
+            return new TriangularAreaOperator<Integer>();
+          case INT64:
+            return new TriangularAreaOperator<Long>();
+          case FLOAT:
+            return new TriangularAreaOperator<Float>();
+          case DOUBLE:
+            return new TriangularAreaOperator<Double>();
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", type));
+        }
+      case SQLConstant.COSINE_OPERATOR:
+        switch (type) {
+          case INT32:
+            return new CosineOperator<Integer>();
+          case INT64:
+            return new CosineOperator<Long>();
+          case FLOAT:
+            return new CosineOperator<Float>();
+          case DOUBLE:
+            return new CosineOperator<Double>();
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
