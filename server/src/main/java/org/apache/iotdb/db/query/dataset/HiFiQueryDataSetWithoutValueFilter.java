@@ -138,10 +138,18 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
   private final BatchData[] cachedBatchDataArray;
 
   private final WeightOperator<?>[] weightOperators;
-
   private final SampleOperator<?>[] sampleOperators;
-
   private final double[] bucketWeights;
+
+  private final List<Long>[] originalTimestampsList;
+  private final List<Number>[] originalValuesList;
+  private final List<Double>[] originalWeightsList;
+
+  private final List<Long>[] sampledTimestampsList;
+  private final List<Number>[] sampledValuesList;
+
+  private final int[] readyToConsumeIndexList;
+  private final TreeSet<Long> timeHeap;
 
   private static final int FLAG = 0x01;
 
@@ -157,36 +165,51 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
       List<ManagedSeriesReader> readers) throws IOException, InterruptedException {
     super(queryPlan.getDeduplicatedPaths(), queryPlan.getDeduplicatedDataTypes());
     this.queryPlan = queryPlan;
-    weightOperators = new WeightOperator[readers.size()];
-    for (int i = 0; i < readers.size(); ++i) {
+    int seriesNum = readers.size();
+    seriesReaderList = readers;
+    blockingQueueArray = new BlockingQueue[seriesNum];
+    noMoreDataInQueueArray = new boolean[seriesNum];
+    cachedBatchDataArray = new BatchData[seriesNum];
+    weightOperators = new WeightOperator[seriesNum];
+    sampleOperators = new SampleOperator[seriesNum];
+    bucketWeights = new double[seriesNum];
+    originalTimestampsList = new List[seriesNum];
+    originalValuesList = new List[seriesNum];
+    originalWeightsList = new List[seriesNum];
+    sampledTimestampsList = new List[seriesNum];
+    sampledValuesList = new List[seriesNum];
+    for (int i = 0; i < seriesNum; ++i) {
+      blockingQueueArray[i] = new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
       weightOperators[i] = WeightOperator.getWeightOperator(queryPlan.getHiFiWeightOperatorName(),
           getDataTypes().get(i));
-    }
-    sampleOperators = new SampleOperator[readers.size()];
-    for (int i = 0; i < readers.size(); ++i) {
       sampleOperators[i] = SampleOperator.getSampleOperator(queryPlan.getHiFiSampleOperatorName(),
           getDataTypes().get(i));
+      originalTimestampsList[i] = new ArrayList<>();
+      originalValuesList[i] = new ArrayList<>();
+      originalWeightsList[i] = new ArrayList<>();
+      sampledTimestampsList[i] = new ArrayList<>();
+      sampledValuesList[i] = new ArrayList<>();
     }
-    bucketWeights = new double[readers.size()];
-    seriesReaderList = readers;
-    blockingQueueArray = new BlockingQueue[readers.size()];
-    for (int i = 0; i < seriesReaderList.size(); i++) {
-      blockingQueueArray[i] = new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
-    }
-    cachedBatchDataArray = new BatchData[readers.size()];
-    noMoreDataInQueueArray = new boolean[readers.size()];
     init();
+    fetch();
+    calculatePointWeightsAndBucketWeights();
+    hiFiSample();
+    readyToConsumeIndexList = new int[seriesNum];
+    timeHeap = new TreeSet<>();
+    for (List<Long> sampledTimestamps : sampledTimestampsList) {
+      timeHeap.addAll(sampledTimestamps);
+    }
   }
 
   private void init() throws IOException, InterruptedException {
-    for (int i = 0; i < seriesReaderList.size(); i++) {
+    for (int i = 0; i < seriesReaderList.size(); ++i) {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       TASK_POOL_MANAGER
           .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
     }
-    for (int i = 0; i < seriesReaderList.size(); i++) {
+    for (int i = 0; i < seriesReaderList.size(); ++i) {
       fillCache(i);
     }
   }
@@ -195,38 +218,17 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
    * for RPC in RawData query between client and server fill time buffer, value buffers and bitmap
    * buffers
    */
-  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
-      throws IOException, InterruptedException {
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException {
     int seriesNum = seriesReaderList.size();
-
-    List<Long>[] originalTimestampsList = new List[seriesNum];
-    List[] originalValuesList = new List[seriesNum];
-    List<Double>[] originalWeightsList = new List[seriesNum];
-
-    List<Long>[] sampledTimestampsList = new List[seriesNum];
-    List[] sampledValuesList = new List[seriesNum];
-
     PublicBAOS timeBAOS = new PublicBAOS();
     PublicBAOS[] valueBAOSList = new PublicBAOS[seriesNum];
     PublicBAOS[] bitmapBAOSList = new PublicBAOS[seriesNum];
-
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
-      originalTimestampsList[seriesIndex] = new ArrayList<>();
-      originalValuesList[seriesIndex] = new ArrayList<>();
-      originalWeightsList[seriesIndex] = new ArrayList<>();
-      sampledTimestampsList[seriesIndex] = new ArrayList<>();
-      sampledValuesList[seriesIndex] = new ArrayList<>();
       valueBAOSList[seriesIndex] = new PublicBAOS();
       bitmapBAOSList[seriesIndex] = new PublicBAOS();
     }
 
-    fetch(originalTimestampsList, originalValuesList);
-    calculatePointWeightsAndBucketWeights(originalTimestampsList, originalValuesList,
-        originalWeightsList);
-    hiFiSample(originalTimestampsList, originalValuesList, originalWeightsList,
-        sampledTimestampsList, sampledValuesList);
-    fillBAOS(sampledTimestampsList, sampledValuesList, timeBAOS, valueBAOSList, bitmapBAOSList,
-        fetchSize, encoder);
+    fillBAOS(fetchSize, encoder, timeBAOS, valueBAOSList, bitmapBAOSList);
 
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     // set time buffer
@@ -248,8 +250,7 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
-  private void fetch(List<Long>[] originalTimestampsList, List<Number>[] originalValuesList)
-      throws IOException, InterruptedException {
+  private void fetch() throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
       while (cachedBatchDataArray[seriesIndex] != null
@@ -285,12 +286,11 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private void calculatePointWeightsAndBucketWeights(List<Long>[] originalTimestampsList,
-      List[] originalValuesList, List<Double>[] originalWeightsList) {
+  private void calculatePointWeightsAndBucketWeights() {
     int seriesNum = seriesReaderList.size();
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
       weightOperators[seriesIndex]
-          .calculate(originalTimestampsList[seriesIndex], originalValuesList[seriesIndex],
+          .calculate(originalTimestampsList[seriesIndex], (List) originalValuesList[seriesIndex],
               originalWeightsList[seriesIndex]);
       double bucketSize = queryPlan.getAverageBucketSize()[seriesIndex];
       bucketWeights[seriesIndex] =
@@ -298,31 +298,22 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private void hiFiSample(List<Long>[] originalTimestampsList, List[] originalValuesList,
-      List<Double>[] originalWeightsList, List<Long>[] sampledTimestampsList,
-      List[] sampledValuesList) {
+  private void hiFiSample() {
     int seriesNum = seriesReaderList.size();
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
       sampleOperators[seriesIndex].sample(originalTimestampsList[seriesIndex],
-          originalValuesList[seriesIndex], originalWeightsList[seriesIndex],
-          sampledTimestampsList[seriesIndex], sampledValuesList[seriesIndex],
+          (List) originalValuesList[seriesIndex], originalWeightsList[seriesIndex],
+          sampledTimestampsList[seriesIndex], (List) sampledValuesList[seriesIndex],
           bucketWeights[seriesIndex]);
     }
   }
 
-  private void fillBAOS(List<Long>[] sampledTimestampsList, List<Number>[] sampledValuesList,
-      PublicBAOS timeBAOS, PublicBAOS[] valueBAOSList, PublicBAOS[] bitmapBAOSList, int fetchSize,
-      WatermarkEncoder encoder)
-      throws IOException {
-    TreeSet<Long> timeHeap = new TreeSet<>();
-    for (List<Long> sampledTimestamps : sampledTimestampsList) {
-      timeHeap.addAll(sampledTimestamps);
-    }
-
+  private void fillBAOS(int fetchSize, WatermarkEncoder encoder, PublicBAOS timeBAOS,
+      PublicBAOS[] valueBAOSList, PublicBAOS[] bitmapBAOSList) throws IOException {
     int seriesNum = seriesReaderList.size();
     int[] currentBitmapList = new int[seriesNum]; // used to record a bitmap for every 8 row records
-    int[] currentIndexList = new int[seriesNum];
     int rowCount = 0;
+
     while (rowCount < fetchSize) {
       if ((rowLimit > 0 && alreadyReturnedRowNum >= rowLimit) || timeHeap.isEmpty()) {
         break;
@@ -334,7 +325,7 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
       }
 
       for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-        int currentIndex = currentIndexList[seriesIndex];
+        int currentIndex = readyToConsumeIndexList[seriesIndex];
         if (sampledTimestampsList[seriesIndex].size() <= currentIndex
             || sampledTimestampsList[seriesIndex].get(currentIndex) != minTime) {
           // current series does not have value at minTime
@@ -380,8 +371,8 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
                     String.format("Data type %s is not supported.", type));
             }
           }
-          // update current index
-          ++currentIndexList[seriesIndex];
+          // update index
+          ++readyToConsumeIndexList[seriesIndex];
         }
       }
 
@@ -464,8 +455,7 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
    */
   @Override
   protected boolean hasNextWithoutConstraint() {
-    return false;
-//    return !timeHeap.isEmpty();
+    return !timeHeap.isEmpty();
   }
 
   /**
@@ -473,46 +463,23 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
    */
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
-    return null;
-//    int seriesNum = seriesReaderList.size();
-//
-//    long minTime = timeHeap.pollFirst();
-//
-//    RowRecord record = new RowRecord(minTime);
-//
-//    for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
-//      if (cachedBatchDataArray[seriesIndex] == null
-//          || !cachedBatchDataArray[seriesIndex].hasCurrent()
-//          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-//        record.addField(null);
-//      } else {
-//        TSDataType dataType = dataTypes.get(seriesIndex);
-//        record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
-//
-//        // move next
-//        cachedBatchDataArray[seriesIndex].next();
-//
-//        // get next batch if current batch is empty and still have remaining batch data in queue
-//        if (!cachedBatchDataArray[seriesIndex].hasCurrent()
-//            && !noMoreDataInQueueArray[seriesIndex]) {
-//          try {
-//            fillCache(seriesIndex);
-//          } catch (InterruptedException e) {
-//            LOGGER.error("Interrupted while taking from the blocking queue: ", e);
-//            Thread.currentThread().interrupt();
-//          } catch (IOException e) {
-//            LOGGER.error("Got IOException", e);
-//            throw e;
-//          }
-//        }
-//
-//        // try to put the next timestamp into the heap
-//        if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
-//          timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
-//        }
-//      }
-//    }
-//
-//    return record;
+    int seriesNum = seriesReaderList.size();
+    long minTime = timeHeap.pollFirst();
+    RowRecord record = new RowRecord(minTime);
+
+    for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
+      int currentIndex = readyToConsumeIndexList[seriesIndex];
+      if (sampledTimestampsList[seriesIndex].size() <= currentIndex
+          || sampledTimestampsList[seriesIndex].get(currentIndex) != minTime) {
+        record.addField(null);
+      } else {
+        record.addField(sampledValuesList[seriesIndex].get(currentIndex),
+            getDataTypes().get(seriesIndex));
+        // update index
+        ++readyToConsumeIndexList[seriesIndex];
+      }
+    }
+
+    return record;
   }
 }

@@ -868,7 +868,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSQueryDataSet result;
 
     if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
-      // TODO
       WatermarkEncoder encoder;
       if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
         encoder = new GroupedLSBWatermarkEncoder(config);
@@ -880,15 +879,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
         // optimize for query without value filter
         result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, encoder);
+      } else if (queryDataSet instanceof HiFiQueryDataSetWithoutValueFilter) {
+        // optimize for query without value filter
+        result = ((HiFiQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, encoder);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
       }
     } else {
-      // TODO
       if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
         // optimize for query without value filter
         result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
       } else if (queryDataSet instanceof HiFiQueryDataSetWithoutValueFilter) {
+        // optimize for query without value filter
         result = ((HiFiQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
