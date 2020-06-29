@@ -20,77 +20,33 @@
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.HiFiQueryPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.HiFiQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
-public class HiFiQueryExecutor {
+public class HiFiQueryExecutor extends RawDataQueryExecutor {
 
-  protected List<Path> deduplicatedPaths;
-  protected List<TSDataType> deduplicatedDataTypes;
-  protected IExpression optimizedExpression;
+  private final HiFiQueryPlan queryPlan;
 
   public HiFiQueryExecutor(HiFiQueryPlan queryPlan) {
-    this.deduplicatedPaths = queryPlan.getDeduplicatedPaths();
-    this.deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
-    this.optimizedExpression = queryPlan.getExpression();
+    super(queryPlan);
+    this.queryPlan = queryPlan;
   }
 
-  /**
-   * execute query without filter or with global time filter.
-   */
-  public QueryDataSet executeWithoutValueFilter(QueryContext context, HiFiQueryPlan queryPlan)
-      throws StorageEngineException, QueryProcessException {
-    try {
-      return new HiFiQueryDataSetWithoutValueFilter(queryPlan,
-          initManagedSeriesReader(context, queryPlan));
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new StorageEngineException(e.getMessage());
-    } catch (IOException e) {
-      throw new StorageEngineException(e.getMessage());
-    }
+  @Override
+  protected QueryDataSet getQueryDataSetWithoutValueFilter(
+      List<ManagedSeriesReader> readersOfSelectedSeries) throws IOException, InterruptedException {
+    return new HiFiQueryDataSetWithoutValueFilter(queryPlan, readersOfSelectedSeries);
   }
 
-  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context,
-      HiFiQueryPlan queryPlan) throws StorageEngineException, QueryProcessException {
-    Filter timeFilter = null;
-    if (optimizedExpression != null) {
-      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
-    }
-
-    List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      Path path = deduplicatedPaths.get(i);
-      TSDataType dataType = deduplicatedDataTypes.get(i);
-
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context, timeFilter);
-      timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-
-      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path,
-          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-          queryDataSource, timeFilter, null, null);
-      readersOfSelectedSeries.add(reader);
-    }
-    return readersOfSelectedSeries;
-  }
-
-  public QueryDataSet executeWithValueFilter(QueryContext context, HiFiQueryPlan queryPlan) {
-    return null;
+  @Override
+  protected QueryDataSet getQueryDataSetWithValueFilter(TimeGenerator timestampGenerator,
+      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached) {
+    return super
+        .getQueryDataSetWithValueFilter(timestampGenerator, readersOfSelectedSeries, cached);
   }
 }
