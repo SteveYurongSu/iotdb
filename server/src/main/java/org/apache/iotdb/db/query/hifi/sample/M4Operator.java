@@ -20,29 +20,17 @@
 package org.apache.iotdb.db.query.hifi.sample;
 
 import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class M4Operator<T extends Number & Comparable<? super T>> extends SampleOperator<T> {
 
-  @Override
-  public void sample(List<Long> originalTimestamps, List<T> originalValues,
-      List<Double> originalWeights, List<Long> sampledTimestamps, List<T> sampledValues,
-      double bucketWeight) {
-    if (bucketWeight == 0) {
-      sampledTimestamps.addAll(originalTimestamps);
-      sampledValues.addAll(originalValues);
-      return;
-    }
+  public M4Operator(TSDataType type) {
+    super(type);
+  }
 
-    // find a bucket[lo, hi] and sample
-    bucketWeight /= 4.0d;
-    int loIndex = 0;
-    int hiIndex = getNextHiIndex(originalWeights, bucketWeight, -1);
-    while (hiIndex != INVALID_INDEX) {
-      sampleFromSingleBucket(originalTimestamps, originalValues, sampledTimestamps, sampledValues,
-          loIndex, hiIndex);
-      loIndex = hiIndex + 1;
-      hiIndex = getNextHiIndex(originalWeights, bucketWeight, hiIndex);
-    }
+  @Override
+  protected int getSampleSizeInSingleBucket() {
+    return 4;
   }
 
   @Override

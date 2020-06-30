@@ -74,6 +74,14 @@ public class SQLConstant {
   public static final String TRIANGULAR_AREA_OPERATOR = "area";
   public static final String COSINE_OPERATOR = "cos";
 
+  // names of HiFi query sample operators
+  public static final String M4_OPERATOR = "m4";
+  public static final String RANDOM_OPERATOR = "random";
+  public static final String AVERAGE_OPERATOR = "average";
+  public static final String MAX_OPERATOR = "max";
+  public static final String MIN_OPERATOR = "min";
+  public static final String OUTLIER_OPERATOR = "outlier";
+
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
   public static final int KW_NOT = 3;
