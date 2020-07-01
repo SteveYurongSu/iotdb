@@ -21,13 +21,11 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class HiFiQueryPlan extends RawDataQueryPlan {
 
@@ -54,7 +52,7 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
     return aggregationPlan;
   }
 
-  public void setCountsAndAverageBucketSize(QueryDataSet queryDataSet) throws IOException {
+  public void setCountsAndAverageBucketSize(SingleDataSet queryDataSet) throws IOException {
     counts = new long[paths.size()];
     averageBucketSize = new double[paths.size()];
     List<Field> fields = queryDataSet.next().getFields();
@@ -101,15 +99,17 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
     aggregationPlan.setOperatorType(OperatorType.AGGREGATION);
     aggregationPlan.setQuery(true);
     aggregationPlan.setAlignByTime(true);
-    aggregationPlan.setPaths(paths);
-    List<TSDataType> dataTypes = new ArrayList<>(paths.size());
-    Collections.fill(dataTypes, TSDataType.INT64);
-    aggregationPlan.setDataTypes(dataTypes);
+    aggregationPlan.setPaths(getPaths());
+    aggregationPlan.setDeduplicatedPaths(getDeduplicatedPaths());
+    aggregationPlan.setDataTypes(getDataTypes());
+    aggregationPlan.setDeduplicatedDataTypes(getDeduplicatedDataTypes());
     aggregationPlan.setExpression(getExpression());
     List<String> aggregations = new ArrayList<>(paths.size());
-    Collections.fill(aggregations, SQLConstant.COUNT);
+    for (int i = 0; i < paths.size(); ++i) {
+      aggregations.add(SQLConstant.COUNT);
+    }
     aggregationPlan.setAggregations(aggregations);
     aggregationPlan.setDeduplicatedAggregations(aggregations);
-    aggregationPlan.setLevel(0);
+    aggregationPlan.setLevel(-1);
   }
 }

@@ -48,12 +48,16 @@ public class AverageOperator<T extends Number & Comparable<? super T>> extends S
     switch (type) {
       case INT32:
         sampledValues.add((T) Integer.valueOf((int) Math.round(valueSum / count)));
+        break;
       case INT64:
         sampledValues.add((T) Long.valueOf(Math.round(valueSum / count)));
+        break;
       case FLOAT:
         sampledValues.add((T) Float.valueOf((float) (valueSum / count)));
+        break;
       case DOUBLE:
         sampledValues.add((T) Double.valueOf(valueSum / count));
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", type));

@@ -98,7 +98,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByTimeClauseContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.HiFiElementContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.HiFiClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
@@ -1243,6 +1243,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterSelectElement(SelectElementContext ctx) {
     super.enterSelectElement(ctx);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    HiFiClauseContext hiFiClauseContext = ctx.hiFiClause();
+    if (hiFiClauseContext != null) {
+      selectOp.setHiFiQuery(true);
+      selectOp
+          .setHiFiWeightOperatorName(removeStringQuote(hiFiClauseContext.weightOperator.getText()));
+      selectOp
+          .setHiFiSampleOperatorName(removeStringQuote(hiFiClauseContext.sampleOperartor.getText()));
+      selectOp.setHiFiSampleSize(Integer.parseInt(hiFiClauseContext.sampleSize.getText()));
+    }
     List<SuffixPathContext> suffixPaths = ctx.suffixPath();
     for (SuffixPathContext suffixPath : suffixPaths) {
       Path path = parseSuffixPath(suffixPath);
@@ -1258,22 +1267,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     selectOp.setLastQuery();
     LastClauseContext lastClauseContext = ctx.lastClause();
     List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
-    for (SuffixPathContext suffixPath : suffixPaths) {
-      Path path = parseSuffixPath(suffixPath);
-      selectOp.addSelectPath(path);
-    }
-    queryOp.setSelectOperator(selectOp);
-  }
-
-  @Override
-  public void enterHiFiElement(HiFiElementContext ctx) {
-    super.enterHiFiElement(ctx);
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    selectOp.setHiFiQuery(true);
-    selectOp.setHiFiWeightOperatorName(removeStringQuote(ctx.weightOperator.getText()));
-    selectOp.setHiFiSampleOperatorName(removeStringQuote(ctx.sampleOperartor.getText()));
-    selectOp.setHiFiSampleSize(Integer.parseInt(ctx.sampleSize.getText()));
-    List<SuffixPathContext> suffixPaths = ctx.suffixPath();
     for (SuffixPathContext suffixPath : suffixPaths) {
       Path path = parseSuffixPath(suffixPath);
       selectOp.addSelectPath(path);

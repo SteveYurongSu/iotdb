@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.*;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -108,12 +109,12 @@ public class QueryRouter implements IQueryRouter {
     if (executeWithValueFilter) {
       aggregationQueryDataSet = aggregationExecutor
           .executeWithValueFilter(aggregationQueryContext, internalAggregationPlan);
-      queryPlan.setCountsAndAverageBucketSize(aggregationQueryDataSet);
+      queryPlan.setCountsAndAverageBucketSize((SingleDataSet) aggregationQueryDataSet);
       return (new HiFiQueryExecutor(queryPlan)).executeWithValueFilter(context, queryPlan);
     } else {
       aggregationQueryDataSet = aggregationExecutor
           .executeWithoutValueFilter(aggregationQueryContext, internalAggregationPlan);
-      queryPlan.setCountsAndAverageBucketSize(aggregationQueryDataSet);
+      queryPlan.setCountsAndAverageBucketSize((SingleDataSet) aggregationQueryDataSet);
       return (new HiFiQueryExecutor(queryPlan)).executeWithoutValueFilter(context, queryPlan);
     }
   }

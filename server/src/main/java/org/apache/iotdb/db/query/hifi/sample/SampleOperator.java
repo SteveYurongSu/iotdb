@@ -39,13 +39,13 @@ public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
       case SQLConstant.M4_OPERATOR:
         switch (type) {
           case INT32:
-            new M4Operator<Integer>(type);
+            return new M4Operator<Integer>(type);
           case INT64:
-            new M4Operator<Long>(type);
+            return new M4Operator<Long>(type);
           case FLOAT:
-            new M4Operator<Float>(type);
+            return new M4Operator<Float>(type);
           case DOUBLE:
-            new M4Operator<Double>(type);
+            return new M4Operator<Double>(type);
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
@@ -53,13 +53,13 @@ public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
       case SQLConstant.RANDOM_OPERATOR:
         switch (type) {
           case INT32:
-            new RandomOperator<Integer>(type);
+            return new RandomOperator<Integer>(type);
           case INT64:
-            new RandomOperator<Long>(type);
+            return new RandomOperator<Long>(type);
           case FLOAT:
-            new RandomOperator<Float>(type);
+            return new RandomOperator<Float>(type);
           case DOUBLE:
-            new RandomOperator<Double>(type);
+            return new RandomOperator<Double>(type);
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
@@ -67,13 +67,13 @@ public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
       case SQLConstant.AVERAGE_OPERATOR:
         switch (type) {
           case INT32:
-            new AverageOperator<Integer>(type);
+            return new AverageOperator<Integer>(type);
           case INT64:
-            new AverageOperator<Long>(type);
+            return new AverageOperator<Long>(type);
           case FLOAT:
-            new AverageOperator<Float>(type);
+            return new AverageOperator<Float>(type);
           case DOUBLE:
-            new AverageOperator<Double>(type);
+            return new AverageOperator<Double>(type);
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
@@ -81,13 +81,13 @@ public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
       case SQLConstant.MAX_OPERATOR:
         switch (type) {
           case INT32:
-            new MaxOperator<Integer>(type);
+            return new MaxOperator<Integer>(type);
           case INT64:
-            new MaxOperator<Long>(type);
+            return new MaxOperator<Long>(type);
           case FLOAT:
-            new MaxOperator<Float>(type);
+            return new MaxOperator<Float>(type);
           case DOUBLE:
-            new MaxOperator<Double>(type);
+            return new MaxOperator<Double>(type);
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
@@ -95,13 +95,13 @@ public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
       case SQLConstant.MIN_OPERATOR:
         switch (type) {
           case INT32:
-            new MinOperator<Integer>(type);
+            return new MinOperator<Integer>(type);
           case INT64:
-            new MinOperator<Long>(type);
+            return new MinOperator<Long>(type);
           case FLOAT:
-            new MinOperator<Float>(type);
+            return new MinOperator<Float>(type);
           case DOUBLE:
-            new MinOperator<Double>(type);
+            return new MinOperator<Double>(type);
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
@@ -109,13 +109,13 @@ public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
       case SQLConstant.OUTLIER_OPERATOR:
         switch (type) {
           case INT32:
-            new OutlierOperator<Integer>(type);
+            return new OutlierOperator<Integer>(type);
           case INT64:
-            new OutlierOperator<Long>(type);
+            return new OutlierOperator<Long>(type);
           case FLOAT:
-            new OutlierOperator<Float>(type);
+            return new OutlierOperator<Float>(type);
           case DOUBLE:
-            new OutlierOperator<Double>(type);
+            return new OutlierOperator<Double>(type);
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
@@ -138,7 +138,7 @@ public abstract class SampleOperator<T extends Number & Comparable<? super T>> {
     }
 
     // find a bucket[lo, hi] and sample
-    bucketWeight /= getSampleSizeInSingleBucket();
+    bucketWeight *= getSampleSizeInSingleBucket();
     int loIndex = 0;
     int hiIndex = getNextHiIndex(originalWeights, bucketWeight, -1);
     while (hiIndex != INVALID_INDEX) {

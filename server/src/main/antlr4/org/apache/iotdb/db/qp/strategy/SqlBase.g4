@@ -96,11 +96,14 @@ statement
 
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
-    | suffixPath (COMMA suffixPath)* #selectElement
+    | hiFiClause? suffixPath (COMMA suffixPath)* #selectElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     | lastClause #lastElement
-    | HIFI LR_BRACKET weightOperator=STRING_LITERAL COMMA sampleOperartor=STRING_LITERAL COMMA
-    sampleSize=INT RR_BRACKET suffixPath (COMMA suffixPath)* #hiFiElement
+    ;
+
+hiFiClause
+    : HIFI LR_BRACKET weightOperator=STRING_LITERAL COMMA sampleOperartor=STRING_LITERAL COMMA
+    sampleSize=INT RR_BRACKET
     ;
 
 functionCall

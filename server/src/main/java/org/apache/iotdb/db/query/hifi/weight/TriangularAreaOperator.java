@@ -27,6 +27,7 @@ public class TriangularAreaOperator<T extends Number & Comparable<? super T>> ex
     double v0 = value0.doubleValue();
     double v1 = value1.doubleValue();
     double v2 = value2.doubleValue();
-    return 0.5 * (time0 * v1 + time1 * v2 + time2 * v0 - time0 * v2 - time1 * v0 - time2 * v1);
+    return Math
+        .abs(0.5 * (time0 * v1 + time1 * v2 + time2 * v0 - time0 * v2 - time1 * v0 - time2 * v1));
   }
 }
