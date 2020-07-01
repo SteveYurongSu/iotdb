@@ -100,7 +100,7 @@ selectElements
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     | lastClause #lastElement
     | HIFI LR_BRACKET weightOperator=STRING_LITERAL COMMA sampleOperartor=STRING_LITERAL COMMA
-    sampleSize=INT RR_BRACKET suffixPath #hifiElement
+    sampleSize=INT RR_BRACKET suffixPath (COMMA suffixPath)* #hiFiElement
     ;
 
 functionCall
