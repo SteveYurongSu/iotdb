@@ -34,8 +34,8 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
   private int hiFiSampleSize;
   private boolean aggregationPlanHasSetup;
   private final AggregationPlan aggregationPlan;
-  private long[] counts;
-  private double[] averageBucketSize;
+  private long[] countsForDeduplicatedPaths;
+  private double[] averageBucketSizeForDeduplicatedPaths;
 
   public HiFiQueryPlan() {
     super();
@@ -53,22 +53,23 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
   }
 
   public void setCountsAndAverageBucketSize(SingleDataSet queryDataSet) throws IOException {
-    counts = new long[paths.size()];
-    averageBucketSize = new double[paths.size()];
+    int deduplicatedPathsSize = getDeduplicatedPaths().size();
+    countsForDeduplicatedPaths = new long[deduplicatedPathsSize];
+    averageBucketSizeForDeduplicatedPaths = new double[deduplicatedPathsSize];
     List<Field> fields = queryDataSet.next().getFields();
-    for (int i = 0; i < paths.size(); ++i) {
+    for (int i = 0; i < deduplicatedPathsSize; ++i) {
       long count = fields.get(i).getLongV();
-      counts[i] = count;
-      averageBucketSize[i] = (double) count / hiFiSampleSize;
+      countsForDeduplicatedPaths[i] = count;
+      averageBucketSizeForDeduplicatedPaths[i] = (double) count / hiFiSampleSize;
     }
   }
 
   public long[] getCounts() {
-    return counts;
+    return countsForDeduplicatedPaths;
   }
 
   public double[] getAverageBucketSize() {
-    return averageBucketSize;
+    return averageBucketSizeForDeduplicatedPaths;
   }
 
   public String getHiFiWeightOperatorName() {
