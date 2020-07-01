@@ -112,7 +112,11 @@ public class BatchData implements Serializable {
     }
   }
 
-  public Long currentTime() {
+  public long currentTime() {
+    return this.timeRet.get(readCurListIndex)[readCurArrayIndex];
+  }
+
+  public Long currentWrappedTime() {
     return this.timeRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
@@ -418,8 +422,11 @@ public class BatchData implements Serializable {
     count++;
   }
 
+  public boolean getBoolean() {
+    return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];
+  }
 
-  public Boolean getBoolean() {
+  public Boolean getWrappedBoolean() {
     return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
@@ -427,7 +434,11 @@ public class BatchData implements Serializable {
     this.booleanRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
-  public Integer getInt() {
+  public int getInt() {
+    return this.intRet.get(readCurListIndex)[readCurArrayIndex];
+  }
+
+  public Integer getWrappedInt() {
     return this.intRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
@@ -435,7 +446,11 @@ public class BatchData implements Serializable {
     this.intRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
-  public Long getLong() {
+  public long getLong() {
+    return this.longRet.get(readCurListIndex)[readCurArrayIndex];
+  }
+
+  public Long getWrappedLong() {
     return this.longRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
@@ -443,7 +458,11 @@ public class BatchData implements Serializable {
     this.longRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
-  public Float getFloat() {
+  public float getFloat() {
+    return this.floatRet.get(readCurListIndex)[readCurArrayIndex];
+  }
+
+  public Float getWrappedFloat() {
     return this.floatRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
@@ -451,7 +470,11 @@ public class BatchData implements Serializable {
     this.floatRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
-  public Double getDouble() {
+  public double getDouble() {
+    return this.doubleRet.get(readCurListIndex)[readCurArrayIndex];
+  }
+
+  public Double getWrappedDouble() {
     return this.doubleRet.get(readCurListIndex)[readCurArrayIndex];
   }
 

@@ -255,20 +255,23 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
       while (cachedBatchDataArray[seriesIndex] != null
           && cachedBatchDataArray[seriesIndex].hasCurrent()) {
-        originalTimestampsList[seriesIndex].add(cachedBatchDataArray[seriesIndex].currentTime());
+        originalTimestampsList[seriesIndex]
+            .add(cachedBatchDataArray[seriesIndex].currentWrappedTime());
         TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
         switch (type) {
           case INT32:
-            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getInt());
+            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getWrappedInt());
             break;
           case INT64:
-            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getLong());
+            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getWrappedLong());
             break;
           case FLOAT:
-            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getFloat());
+            originalValuesList[seriesIndex]
+                .add(cachedBatchDataArray[seriesIndex].getWrappedFloat());
             break;
           case DOUBLE:
-            originalValuesList[seriesIndex].add(cachedBatchDataArray[seriesIndex].getDouble());
+            originalValuesList[seriesIndex]
+                .add(cachedBatchDataArray[seriesIndex].getWrappedDouble());
             break;
           default:
             throw new UnSupportedDataTypeException(
@@ -462,7 +465,7 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
    * for spark/hadoop/hive integration and test
    */
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  protected RowRecord nextWithoutConstraint() {
     int seriesNum = seriesReaderList.size();
     long minTime = timeHeap.pollFirst();
     RowRecord record = new RowRecord(minTime);
