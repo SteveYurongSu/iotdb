@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.qp.physical.crud.HiFiQueryPlan;
+import org.apache.iotdb.db.query.dataset.HiFiQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.HiFiQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -45,8 +46,8 @@ public class HiFiQueryExecutor extends RawDataQueryExecutor {
 
   @Override
   protected QueryDataSet getQueryDataSetWithValueFilter(TimeGenerator timestampGenerator,
-      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached) {
-    return super
-        .getQueryDataSetWithValueFilter(timestampGenerator, readersOfSelectedSeries, cached);
+      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached) throws IOException {
+    return new HiFiQueryDataSetWithValueFilter(queryPlan, timestampGenerator,
+        readersOfSelectedSeries, cached);
   }
 }

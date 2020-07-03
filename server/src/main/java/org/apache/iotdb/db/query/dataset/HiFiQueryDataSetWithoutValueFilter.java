@@ -165,8 +165,8 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
       List<ManagedSeriesReader> readers) throws IOException, InterruptedException {
     super(queryPlan.getDeduplicatedPaths(), queryPlan.getDeduplicatedDataTypes());
     this.queryPlan = queryPlan;
-    int seriesNum = readers.size();
     seriesReaderList = readers;
+    int seriesNum = readers.size();
     blockingQueueArray = new BlockingQueue[seriesNum];
     noMoreDataInQueueArray = new boolean[seriesNum];
     cachedBatchDataArray = new BatchData[seriesNum];

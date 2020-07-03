@@ -34,7 +34,7 @@ public interface IQueryRouter {
    * Execute physical plan.
    */
   QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException;
+      throws StorageEngineException, QueryProcessException, IOException;
 
   /**
    * Execute HiFi query.

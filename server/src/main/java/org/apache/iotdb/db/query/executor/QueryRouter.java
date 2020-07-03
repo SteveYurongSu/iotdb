@@ -54,7 +54,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException, IOException {
     IExpression expression = queryPlan.getExpression();
     List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
 

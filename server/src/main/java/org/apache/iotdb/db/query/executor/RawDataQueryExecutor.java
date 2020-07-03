@@ -122,7 +122,7 @@ public class RawDataQueryExecutor {
    * @throws StorageEngineException StorageEngineException
    */
   public QueryDataSet executeWithValueFilter(QueryContext context, RawDataQueryPlan queryPlan)
-      throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException, IOException {
 
     TimeGenerator timestampGenerator = getTimeGenerator(optimizedExpression, context, queryPlan);
     List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths,
@@ -144,7 +144,7 @@ public class RawDataQueryExecutor {
   }
 
   protected QueryDataSet getQueryDataSetWithValueFilter(TimeGenerator timestampGenerator,
-      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached) {
+      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached) throws IOException {
     return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries, cached);
   }
