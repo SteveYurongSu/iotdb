@@ -192,7 +192,8 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
     init();
     fetch();
-    calculatePointWeightsAndBucketWeights();
+    calculatePointWeights();
+    calculateBucketWeights();
     hiFiSample();
     readyToConsumeIndexList = new int[seriesNum];
     timeHeap = new TreeSet<>();
@@ -289,13 +290,20 @@ public class HiFiQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private void calculatePointWeightsAndBucketWeights() {
+  private void calculatePointWeights() {
     int seriesNum = seriesReaderList.size();
     for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
       weightOperators[seriesIndex]
           .calculate(originalTimestampsList[seriesIndex], (List) originalValuesList[seriesIndex],
               originalWeightsList[seriesIndex]);
-      double bucketSize = queryPlan.getAverageBucketSize()[seriesIndex];
+    }
+  }
+
+  private void calculateBucketWeights() {
+    int seriesNum = seriesReaderList.size();
+    for (int seriesIndex = 0; seriesIndex < seriesNum; ++seriesIndex) {
+      double bucketSize =
+          (double) originalTimestampsList[seriesIndex].size() / queryPlan.getHiFiSampleSize();
       bucketWeights[seriesIndex] =
           bucketSize <= 1 ? 0 : bucketSize * weightOperators[seriesIndex].getCurrentAverageWeight();
     }

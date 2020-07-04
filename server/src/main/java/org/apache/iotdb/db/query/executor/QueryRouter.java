@@ -19,13 +19,24 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.HiFiQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.*;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,10 +50,6 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -98,25 +105,10 @@ public class QueryRouter implements IQueryRouter {
     }
     queryPlan.setExpression(optimizedExpression);
 
-    AggregationPlan internalAggregationPlan = queryPlan.getAggregationPlan();
-    long aggregationQueryId = QueryResourceManager.getInstance().assignQueryId(true);
-    QueryContext aggregationQueryContext = new QueryContext(aggregationQueryId);
-    AggregationExecutor aggregationExecutor = getAggregationExecutor(internalAggregationPlan);
-
-    boolean executeWithValueFilter =
-        optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME;
-    QueryDataSet aggregationQueryDataSet;
-    if (executeWithValueFilter) {
-      aggregationQueryDataSet = aggregationExecutor
-          .executeWithValueFilter(aggregationQueryContext, internalAggregationPlan);
-      queryPlan.setCountsAndAverageBucketSize((SingleDataSet) aggregationQueryDataSet);
-      return (new HiFiQueryExecutor(queryPlan)).executeWithValueFilter(context, queryPlan);
-    } else {
-      aggregationQueryDataSet = aggregationExecutor
-          .executeWithoutValueFilter(aggregationQueryContext, internalAggregationPlan);
-      queryPlan.setCountsAndAverageBucketSize((SingleDataSet) aggregationQueryDataSet);
-      return (new HiFiQueryExecutor(queryPlan)).executeWithoutValueFilter(context, queryPlan);
-    }
+    return
+        optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME
+            ? (new HiFiQueryExecutor(queryPlan)).executeWithValueFilter(context, queryPlan)
+            : (new HiFiQueryExecutor(queryPlan)).executeWithoutValueFilter(context, queryPlan);
   }
 
   @Override

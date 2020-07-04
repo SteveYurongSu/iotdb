@@ -19,57 +19,17 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.tsfile.read.common.Field;
 
 public class HiFiQueryPlan extends RawDataQueryPlan {
 
   private String hiFiWeightOperatorName;
   private String hiFiSampleOperatorName;
   private int hiFiSampleSize;
-  private boolean aggregationPlanHasSetup;
-  private final AggregationPlan aggregationPlan;
-  private long[] countsForDeduplicatedPaths;
-  private double[] averageBucketSizeForDeduplicatedPaths;
 
   public HiFiQueryPlan() {
     super();
     setOperatorType(OperatorType.HIFI);
-    aggregationPlanHasSetup = false;
-    aggregationPlan = new AggregationPlan();
-  }
-
-  public AggregationPlan getAggregationPlan() {
-    if (!aggregationPlanHasSetup) {
-      setupInternalAggregationPlan();
-      aggregationPlanHasSetup = true;
-    }
-    return aggregationPlan;
-  }
-
-  public void setCountsAndAverageBucketSize(SingleDataSet queryDataSet) throws IOException {
-    int deduplicatedPathsSize = getDeduplicatedPaths().size();
-    countsForDeduplicatedPaths = new long[deduplicatedPathsSize];
-    averageBucketSizeForDeduplicatedPaths = new double[deduplicatedPathsSize];
-    List<Field> fields = queryDataSet.next().getFields();
-    for (int i = 0; i < deduplicatedPathsSize; ++i) {
-      long count = fields.get(i).getLongV();
-      countsForDeduplicatedPaths[i] = count;
-      averageBucketSizeForDeduplicatedPaths[i] = (double) count / hiFiSampleSize;
-    }
-  }
-
-  public long[] getCounts() {
-    return countsForDeduplicatedPaths;
-  }
-
-  public double[] getAverageBucketSize() {
-    return averageBucketSizeForDeduplicatedPaths;
   }
 
   public String getHiFiWeightOperatorName() {
@@ -94,23 +54,5 @@ public class HiFiQueryPlan extends RawDataQueryPlan {
 
   public void setHiFiSampleSize(int hiFiSampleSize) {
     this.hiFiSampleSize = hiFiSampleSize;
-  }
-
-  private void setupInternalAggregationPlan() {
-    aggregationPlan.setOperatorType(OperatorType.AGGREGATION);
-    aggregationPlan.setQuery(true);
-    aggregationPlan.setAlignByTime(true);
-    aggregationPlan.setPaths(getPaths());
-    aggregationPlan.setDeduplicatedPaths(getDeduplicatedPaths());
-    aggregationPlan.setDataTypes(getDataTypes());
-    aggregationPlan.setDeduplicatedDataTypes(getDeduplicatedDataTypes());
-    aggregationPlan.setExpression(getExpression());
-    List<String> aggregations = new ArrayList<>(paths.size());
-    for (int i = 0; i < paths.size(); ++i) {
-      aggregations.add(SQLConstant.COUNT);
-    }
-    aggregationPlan.setAggregations(aggregations);
-    aggregationPlan.setDeduplicatedAggregations(aggregations);
-    aggregationPlan.setLevel(-1);
   }
 }
