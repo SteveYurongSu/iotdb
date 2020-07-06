@@ -74,12 +74,16 @@ statement
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
+    | TRACING ON #tracingOn
+    | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
+    | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -145,10 +149,20 @@ aliasClause
 
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
     tagClause
     attributeClause
+    ;
+
+compressor
+    : UNCOMPRESSED
+    | SNAPPY
+    | GZIP
+    | LZO
+    | SDT
+    | PAA
+    | PLA
     ;
 
 attributeClause
@@ -374,6 +388,7 @@ nodeName
     | MINUS? INT
     | booleanClause
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | compressor
     ;
 
 nodeNameWithoutStar
@@ -387,6 +402,7 @@ nodeNameWithoutStar
     | MINUS? INT
     | booleanClause
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | compressor
     ;
 
 dataType
@@ -675,8 +691,16 @@ USING
     : U S I N G
     ;
 
+TRACING
+    : T R A C I N G
+    ;
+
 ON
     : O N
+    ;
+
+OFF
+    : O F F
     ;
 
 DROP
@@ -884,12 +908,56 @@ FALSE
     : F A L S E
     ;
 
+UNCOMPRESSED
+    : U N C O M P R E S S E D
+    ;
+
+SNAPPY
+    : S N A P P Y
+    ;
+
+GZIP
+    : G Z I P
+    ;
+
+LZO
+    : L Z O
+    ;
+
+SDT
+    : S D T
+    ;
+
+PAA
+    : P A A
+    ;
+
+PLA
+   : P L A
+   ;
+
 LATEST
     : L A T E S T
     ;
 
 HIFI
     : H I F I
+    ;
+
+PARTITION
+    : P A R T I T I O N
+    ;
+
+SNAPSHOT
+    : S N A P S H O T
+    ;
+
+FOR
+    : F O R
+    ;
+
+SCHEMA
+    : S C H E M A
     ;
 
 //============================
