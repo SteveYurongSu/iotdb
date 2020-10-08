@@ -98,7 +98,7 @@ public class TsFileSequenceRead {
               PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
                   defaultTimeDecoder, null);
               BatchData batchData = reader1.getAllSatisfiedPageData();
-              testTimeValueCompression(batchData);
+              testValueCompression(batchData);
             }
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
@@ -133,17 +133,18 @@ public class TsFileSequenceRead {
   private static void testValueCompression(BatchData batchData) throws IOException {
     ByteBufferBitOutput out = new ByteBufferBitOutput();
     Predictor predictor = new LastValuePredictor();
+    PublicBAOS baos = new PublicBAOS();
     if (!batchData.hasCurrent()) {
       return;
     } else {
       double first = batchData.getDouble();
       predictor.update(Double.doubleToRawLongBits(first));
       out.writeBits(Double.doubleToRawLongBits(first), 64);
+      ReadWriteIOUtils.write(first, baos);
       batchData.next();
     }
 
     PublicValueCompressor compressor = new PublicValueCompressor(out, predictor);
-    PublicBAOS baos = new PublicBAOS();
     while (batchData.hasCurrent()) {
       compressor.add(batchData.getDouble());
       ReadWriteIOUtils.write(batchData.getDouble(), baos);
@@ -155,8 +156,9 @@ public class TsFileSequenceRead {
     out.getByteBuffer().flip();
     ValueDecompressor decompressor = new ValueDecompressor(
         new ByteBufferBitInput(out.getByteBuffer()), new LastValuePredictor());
-    System.out.println(batchData.getDouble());
-    System.out.println(Double.longBitsToDouble(decompressor.readFirst()));
+    if (batchData.getDouble() != Double.longBitsToDouble(decompressor.readFirst())) {
+      throw new RuntimeException();
+    }
     batchData.next();
     while (batchData.hasCurrent()) {
       if (batchData.getDouble() != Double.longBitsToDouble(decompressor.nextValue())) {
