@@ -58,6 +58,16 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.jarslab.ts</groupId>
+            <artifactId>gorilla4j</artifactId>
+            <version>0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>fi.iki.yak</groupId>
+            <artifactId>compression-gorilla</artifactId>
+            <version>2.1.1</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

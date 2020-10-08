@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.tsfile;
 
+import fi.iki.yak.ts.compression.gorilla.BitOutput;
+import fi.iki.yak.ts.compression.gorilla.ByteBufferBitInput;
+import fi.iki.yak.ts.compression.gorilla.ByteBufferBitOutput;
+import fi.iki.yak.ts.compression.gorilla.GorillaCompressor;
+import fi.iki.yak.ts.compression.gorilla.Predictor;
+import fi.iki.yak.ts.compression.gorilla.ValueCompressor;
+import fi.iki.yak.ts.compression.gorilla.ValueDecompressor;
+import fi.iki.yak.ts.compression.gorilla.predictors.LastValuePredictor;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -36,17 +44,20 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileSequenceRead {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "/Users/steve/Desktop/1599784379866-741-0.tsfile-0-1600049975086.vm";
     if (args.length >= 1) {
       filename = args[0];
     }
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
-      System.out.println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
+      System.out
+          .println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
       System.out.println("file magic head: " + reader.readHeadMagic());
       System.out.println("file magic tail: " + reader.readTailMagic());
       System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
@@ -55,7 +66,8 @@ public class TsFileSequenceRead {
       // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
       // judge accordingly.
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+      reader
+          .position((long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
               .getBytes().length);
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
@@ -68,10 +80,10 @@ public class TsFileSequenceRead {
             ChunkHeader header = reader.readChunkHeader();
             System.out.println("\tMeasurement: " + header.getMeasurementID());
             Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                    TSDataType.INT64);
+                TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                TSDataType.INT64);
             Decoder valueDecoder = Decoder
-                    .getDecoderByType(header.getEncodingType(), header.getDataType());
+                .getDecoderByType(header.getEncodingType(), header.getDataType());
             for (int j = 0; j < header.getNumOfPages(); j++) {
               valueDecoder.reset();
               System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
@@ -80,16 +92,12 @@ public class TsFileSequenceRead {
               System.out.println("\t\tpoints in the page: " + pageHeader.getNumOfValues());
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               System.out
-                      .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
+                  .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
               PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
-                      defaultTimeDecoder, null);
+                  defaultTimeDecoder, null);
               BatchData batchData = reader1.getAllSatisfiedPageData();
-              while (batchData.hasCurrent()) {
-                System.out.println(
-                        "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
-                                .currentValue());
-                batchData.next();
-              }
+              testValueCompression(batchData);
+              throw new RuntimeException();
             }
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
@@ -109,7 +117,8 @@ public class TsFileSequenceRead {
       for (String device : reader.getAllDevices()) {
         Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
         System.out.println(String
-                .format("\t[Device]Device %s, Number of Measurements %d", device, seriesMetaData.size()));
+            .format("\t[Device]Device %s, Number of Measurements %d", device,
+                seriesMetaData.size()));
         for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
           System.out.println("\t\tMeasurement:" + serie.getKey());
           for (ChunkMetadata chunkMetadata : serie.getValue()) {
@@ -118,5 +127,108 @@ public class TsFileSequenceRead {
         }
       }
     }
+  }
+
+  private static void testValueCompression(BatchData batchData) throws IOException {
+    ByteBufferBitOutput out = new ByteBufferBitOutput();
+    Predictor predictor = new LastValuePredictor();
+    if (!batchData.hasCurrent()) {
+      return;
+    } else {
+      double first = batchData.getDouble();
+      predictor.update(Double.doubleToRawLongBits(first));
+      out.writeBits(Double.doubleToRawLongBits(first), 64);
+      batchData.next();
+    }
+
+    PublicValueCompressor compressor = new PublicValueCompressor(out, predictor);
+    PublicBAOS baos = new PublicBAOS();
+    while (batchData.hasCurrent()) {
+      compressor.add(batchData.getDouble());
+      ReadWriteIOUtils.write(batchData.getDouble(), baos);
+      batchData.next();
+    }
+    compressor.close();
+
+    batchData.resetBatchData();
+    out.getByteBuffer().flip();
+    ValueDecompressor decompressor = new ValueDecompressor(
+        new ByteBufferBitInput(out.getByteBuffer()), new LastValuePredictor());
+    System.out.println(batchData.getDouble());
+    System.out.println(Double.longBitsToDouble(decompressor.readFirst()));
+    batchData.next();
+    int count = 1;
+    while (batchData.hasCurrent()) {
+      System.out.println(++count);
+      System.out.println(batchData.getDouble());
+      System.out.println(Double.longBitsToDouble(decompressor.nextValue()));
+      batchData.next();
+    }
+
+    System.out.println(out.getByteBuffer().position());
+    System.out.println(baos.size());
+    System.out.println(out.getByteBuffer().position() / (double) baos.size());
+  }
+
+  private static void testTimeValueCompression(BatchData batchData) throws IOException {
+    ByteBufferBitOutput out = new ByteBufferBitOutput();
+    GorillaCompressor compressor;
+    Predictor predictor = new LastValuePredictor();
+    if (!batchData.hasCurrent()) {
+      return;
+    } else {
+      double first = batchData.getDouble();
+      compressor = new GorillaCompressor(Double.doubleToRawLongBits(first), out);
+      batchData.next();
+    }
+
+    PublicBAOS baos = new PublicBAOS();
+    while (batchData.hasCurrent()) {
+      compressor.addValue(batchData.currentTime(), batchData.getDouble());
+      ReadWriteIOUtils.write(batchData.currentTime(), baos);
+      ReadWriteIOUtils.write(batchData.getDouble(), baos);
+      batchData.next();
+    }
+    compressor.close();
+//
+//    batchData.resetBatchData();
+//    out.getByteBuffer().flip();
+//    ValueDecompressor decompressor = new ValueDecompressor(
+//        new ByteBufferBitInput(out.getByteBuffer()), new LastValuePredictor());
+//    System.out.println(batchData.getDouble());
+//    System.out.println(Double.longBitsToDouble(decompressor.readFirst()));
+//    batchData.next();
+//    int count = 1;
+//    while (batchData.hasCurrent()) {
+//      System.out.println(++count);
+//      System.out.println(batchData.getDouble());
+//      System.out.println(Double.longBitsToDouble(decompressor.nextValue()));
+//      batchData.next();
+//    }
+
+    System.out.println(out.getByteBuffer().position());
+    System.out.println(baos.size());
+    System.out.println(out.getByteBuffer().position() / (double) baos.size());
+  }
+}
+
+class PublicValueCompressor extends ValueCompressor {
+
+  private BitOutput out;
+
+  public PublicValueCompressor(BitOutput out, Predictor predictor) {
+    super(out, predictor);
+    this.out = out;
+  }
+
+  public void add(double value) {
+    super.compressValue(Double.doubleToRawLongBits(value));
+  }
+
+  public void close() {
+    out.writeBits(0x0F, 4);
+    out.writeBits(0xFFFFFFFF, 32);
+    out.skipBit();
+    out.flush();
   }
 }
