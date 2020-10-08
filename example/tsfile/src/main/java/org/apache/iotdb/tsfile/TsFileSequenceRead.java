@@ -22,6 +22,8 @@ import fi.iki.yak.ts.compression.gorilla.BitOutput;
 import fi.iki.yak.ts.compression.gorilla.ByteBufferBitInput;
 import fi.iki.yak.ts.compression.gorilla.ByteBufferBitOutput;
 import fi.iki.yak.ts.compression.gorilla.GorillaCompressor;
+import fi.iki.yak.ts.compression.gorilla.GorillaDecompressor;
+import fi.iki.yak.ts.compression.gorilla.Pair;
 import fi.iki.yak.ts.compression.gorilla.Predictor;
 import fi.iki.yak.ts.compression.gorilla.ValueCompressor;
 import fi.iki.yak.ts.compression.gorilla.ValueDecompressor;
@@ -51,7 +53,7 @@ public class TsFileSequenceRead {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
-    String filename = "/Users/steve/Desktop/1599784379866-741-0.tsfile-0-1600049975086.vm";
+    String filename = "/Users/steve/Desktop/sin.ts";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -96,8 +98,7 @@ public class TsFileSequenceRead {
               PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
                   defaultTimeDecoder, null);
               BatchData batchData = reader1.getAllSatisfiedPageData();
-              testValueCompression(batchData);
-              throw new RuntimeException();
+              testTimeValueCompression(batchData);
             }
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
@@ -157,11 +158,10 @@ public class TsFileSequenceRead {
     System.out.println(batchData.getDouble());
     System.out.println(Double.longBitsToDouble(decompressor.readFirst()));
     batchData.next();
-    int count = 1;
     while (batchData.hasCurrent()) {
-      System.out.println(++count);
-      System.out.println(batchData.getDouble());
-      System.out.println(Double.longBitsToDouble(decompressor.nextValue()));
+      if (batchData.getDouble() != Double.longBitsToDouble(decompressor.nextValue())) {
+        throw new RuntimeException();
+      }
       batchData.next();
     }
 
@@ -177,9 +177,8 @@ public class TsFileSequenceRead {
     if (!batchData.hasCurrent()) {
       return;
     } else {
-      double first = batchData.getDouble();
-      compressor = new GorillaCompressor(Double.doubleToRawLongBits(first), out);
-      batchData.next();
+      long first = batchData.currentTime();
+      compressor = new GorillaCompressor(first, out, predictor);
     }
 
     PublicBAOS baos = new PublicBAOS();
@@ -190,21 +189,23 @@ public class TsFileSequenceRead {
       batchData.next();
     }
     compressor.close();
-//
-//    batchData.resetBatchData();
-//    out.getByteBuffer().flip();
-//    ValueDecompressor decompressor = new ValueDecompressor(
-//        new ByteBufferBitInput(out.getByteBuffer()), new LastValuePredictor());
-//    System.out.println(batchData.getDouble());
-//    System.out.println(Double.longBitsToDouble(decompressor.readFirst()));
-//    batchData.next();
-//    int count = 1;
-//    while (batchData.hasCurrent()) {
-//      System.out.println(++count);
-//      System.out.println(batchData.getDouble());
-//      System.out.println(Double.longBitsToDouble(decompressor.nextValue()));
-//      batchData.next();
-//    }
+
+    batchData.resetBatchData();
+    out.getByteBuffer().flip();
+    GorillaDecompressor decompressor = new GorillaDecompressor(
+        new ByteBufferBitInput(out.getByteBuffer()), new LastValuePredictor());
+    while (batchData.hasCurrent()) {
+      Pair pair = decompressor.readPair();
+      if (pair.getTimestamp() != batchData.currentTime()
+          || pair.getDoubleValue() != batchData.getDouble()) {
+        System.out.println(pair.getTimestamp());
+        System.out.println(batchData.currentTime());
+        System.out.println(pair.getDoubleValue());
+        System.out.println(batchData.getDouble());
+        throw new RuntimeException();
+      }
+      batchData.next();
+    }
 
     System.out.println(out.getByteBuffer().position());
     System.out.println(baos.size());
