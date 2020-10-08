@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -45,9 +44,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 public class TsFileSketchTool {
 
   public static void main(String[] args) throws IOException {
-    Pair<String, String> fileNames = checkArgs(args);
-    String filename = fileNames.left;
-    String outFile = fileNames.right;
+//    Pair<String, String> fileNames = checkArgs(args);
+    String filename = "/Users/steve/Desktop/100.ts";
+    String outFile = "/Users/steve/Desktop/100.ts.sketch";
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {

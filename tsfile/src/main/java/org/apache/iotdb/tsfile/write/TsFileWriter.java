@@ -22,12 +22,14 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -48,6 +50,18 @@ import java.util.Map;
  * outputStream.
  */
 public class TsFileWriter implements AutoCloseable {
+
+  public static void main(String[] args) throws IOException, WriteProcessException {
+    TsFileWriter tsFileWriter = new TsFileWriter(new File("/Users/steve/Desktop/100.ts"));
+    tsFileWriter.registerTimeseries(new Path("root.sg.d.s"),
+        new MeasurementSchema("s", TSDataType.DOUBLE));
+    for (int i = 0; i < 1000; ++i) {
+      TSRecord tsRecord = new TSRecord(i, "root.sg.d");
+      tsRecord.addTuple(new DoubleDataPoint("s", i));
+      tsFileWriter.write(tsRecord);
+    }
+    tsFileWriter.close();
+  }
 
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);

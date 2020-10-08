@@ -80,7 +80,7 @@ public class TSFileConfig implements Serializable {
   /**
    * The maximum number of data points in a page, default value is 1024 * 1024.
    */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
+  private int maxNumberOfPointsInPage = 100;
   /**
    * The maximum degree of a metadataIndex node, default value is 1024
    */
