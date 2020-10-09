@@ -45,8 +45,8 @@ public class TsFileSketchTool {
 
   public static void main(String[] args) throws IOException {
 //    Pair<String, String> fileNames = checkArgs(args);
-    String filename = "/Users/steve/Desktop/100.ts";
-    String outFile = "/Users/steve/Desktop/100.ts.sketch";
+    String filename = "/Users/steve/repos/incubator-iotdb/data/data/sequence/root.sg1/0/1602171185949-1-0.tsfile";
+    String outFile = "/Users/steve/Desktop/1602169586373-1-0.tsfile.sketch";
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {

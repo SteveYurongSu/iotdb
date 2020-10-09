@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -53,11 +54,16 @@ public class TsFileRead {
 
   public static void main(String[] args) throws IOException {
 
-    for (int i = 0; i < 1000000; ++i) {
-      testOnce();
+    List<Long> values = new ArrayList<>();
+    for (int i = 0; i < 1000_0000; ++i) {
+      values.add((long) i);
     }
 
-    System.out.println(timeCount);
+//    for (int i = 0; i < 1000000; ++i) {
+//      testOnce();
+//    }
+//
+//    System.out.println(timeCount);
   }
 
   public static void testOnce() throws IOException {
