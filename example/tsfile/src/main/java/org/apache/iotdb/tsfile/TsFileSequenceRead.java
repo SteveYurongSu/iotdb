@@ -35,6 +35,11 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder.LongDeltaDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder.LongDeltaEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -51,9 +56,18 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileSequenceRead {
 
+  private static int count = 0;
+  private static int bytesLengthBeforeEncoding = 0;
+
+  private static int t1v1 = 0;
+  private static int v1 = 0;
+  private static int t1 = 0;
+  private static int v2 = 0;
+  private static int t2 = 0;
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
-    String filename = "/Users/steve/Desktop/sin.ts";
+    String filename = "/Users/steve/Desktop/IoTDB/1599784379866-741-0.tsfile-0-1600049975086.vm";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -95,10 +109,21 @@ public class TsFileSequenceRead {
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               System.out
                   .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
+              System.out
+                  .println("\t\tCompressed page data size: " + pageHeader.getCompressedSize());
               PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
                   defaultTimeDecoder, null);
               BatchData batchData = reader1.getAllSatisfiedPageData();
-              testValueCompression(batchData);
+              if (header.getDataType().equals(TSDataType.DOUBLE)) {
+                System.out.println("------------------------------------------------");
+                System.out.printf("第%d个header：%n\n", count + 1);
+                calculateCompressionRatio(batchData);
+                if (10 < ++count) {
+                  return;
+                }
+              } else {
+                throw new RuntimeException();
+              }
             }
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
@@ -130,32 +155,94 @@ public class TsFileSequenceRead {
     }
   }
 
-  private static void testValueCompression(BatchData batchData) throws IOException {
-    ByteBufferBitOutput out = new ByteBufferBitOutput();
-    Predictor predictor = new LastValuePredictor();
-    PublicBAOS baos = new PublicBAOS();
-    if (!batchData.hasCurrent()) {
-      return;
-    } else {
-      double first = batchData.getDouble();
-      predictor.update(Double.doubleToRawLongBits(first));
-      out.writeBits(Double.doubleToRawLongBits(first), 64);
-      ReadWriteIOUtils.write(first, baos);
+  private static void calculateCompressionRatio(BatchData batchData) throws IOException {
+    calculateByteLengthBeforeEncoding(batchData);
+    batchData.resetBatchData();
+    pre(batchData);
+    batchData.resetBatchData();
+    t1v1(batchData);
+    batchData.resetBatchData();
+    t2(batchData);
+    batchData.resetBatchData();
+    v2(batchData);
+    System.out.printf("T1 + V1 after encoding: %d, %f\n", t1 + v1,
+        (t1 + v1) / (double) (2 * bytesLengthBeforeEncoding));
+    System.out.printf("T1 + V2 after encoding: %d, %f\n", t1 + v2,
+        (t1 + v2) / (double) (2 * bytesLengthBeforeEncoding));
+    System.out.printf("T2 + V1 after encoding: %d, %f\n", t2 + v1,
+        (t2 + v1) / (double) (2 * bytesLengthBeforeEncoding));
+    System.out.printf("T2 + V2 after encoding: %d, %f\n", t2 + v2,
+        (t2 + v2) / (double) (2 * bytesLengthBeforeEncoding));
+  }
+
+  private static void calculateByteLengthBeforeEncoding(BatchData batchData) {
+    int count = 0;
+    while (batchData.hasCurrent()) {
+      ++count;
       batchData.next();
     }
+    bytesLengthBeforeEncoding = 8 * count;
+    System.out.printf("bytes length: %d\n\n", bytesLengthBeforeEncoding);
+  }
 
-    PublicValueCompressor compressor = new PublicValueCompressor(out, predictor);
+  private static void pre(BatchData batchData) throws IOException {
+    ByteBufferBitOutput compressedOutput = new ByteBufferBitOutput();
+    PublicBAOS uncompressedOutput = new PublicBAOS();
+
+    GorillaCompressor compressor = new GorillaCompressor(batchData.currentTime(), compressedOutput,
+        new LastValuePredictor());
     while (batchData.hasCurrent()) {
-      compressor.add(batchData.getDouble());
-      ReadWriteIOUtils.write(batchData.getDouble(), baos);
+      compressor.addValue(batchData.currentTime(), batchData.getDouble());
+      ReadWriteIOUtils.write(batchData.currentTime(), uncompressedOutput);
+      ReadWriteIOUtils.write(batchData.getDouble(), uncompressedOutput);
       batchData.next();
     }
     compressor.close();
 
     batchData.resetBatchData();
-    out.getByteBuffer().flip();
+    compressedOutput.getByteBuffer().flip();
+    GorillaDecompressor decompressor = new GorillaDecompressor(
+        new ByteBufferBitInput(compressedOutput.getByteBuffer()), new LastValuePredictor());
+    while (batchData.hasCurrent()) {
+      Pair pair = decompressor.readPair();
+      if (pair.getTimestamp() != batchData.currentTime()
+          || pair.getDoubleValue() != batchData.getDouble()) {
+        throw new RuntimeException();
+      }
+      batchData.next();
+    }
+
+    if (uncompressedOutput.size() != bytesLengthBeforeEncoding * 2) {
+      throw new RuntimeException();
+    }
+
+    t1v1 = compressedOutput.getByteBuffer().position();
+    System.out.printf("T1 + V1 after encoding: %d\n", t1v1);
+  }
+
+  private static void t1v1(BatchData batchData) throws IOException {
+    ByteBufferBitOutput compressedOutput = new ByteBufferBitOutput();
+    PublicBAOS uncompressedOutput = new PublicBAOS();
+
+    Predictor predictor = new LastValuePredictor();
+    double first = batchData.getDouble();
+    predictor.update(Double.doubleToRawLongBits(first));
+    compressedOutput.writeBits(Double.doubleToRawLongBits(first), 64);
+    ReadWriteIOUtils.write(first, uncompressedOutput);
+    batchData.next();
+
+    PublicValueCompressor compressor = new PublicValueCompressor(compressedOutput, predictor);
+    while (batchData.hasCurrent()) {
+      compressor.add(batchData.getDouble());
+      ReadWriteIOUtils.write(batchData.getDouble(), uncompressedOutput);
+      batchData.next();
+    }
+    compressor.close();
+
+    batchData.resetBatchData();
+    compressedOutput.getByteBuffer().flip();
     ValueDecompressor decompressor = new ValueDecompressor(
-        new ByteBufferBitInput(out.getByteBuffer()), new LastValuePredictor());
+        new ByteBufferBitInput(compressedOutput.getByteBuffer()), new LastValuePredictor());
     if (batchData.getDouble() != Double.longBitsToDouble(decompressor.readFirst())) {
       throw new RuntimeException();
     }
@@ -167,51 +254,63 @@ public class TsFileSequenceRead {
       batchData.next();
     }
 
-    System.out.println(out.getByteBuffer().position());
-    System.out.println(baos.size());
-    System.out.println(out.getByteBuffer().position() / (double) baos.size());
+    if (uncompressedOutput.size() != bytesLengthBeforeEncoding) {
+      throw new RuntimeException();
+    }
+
+    v1 = compressedOutput.getByteBuffer().position();
+    t1 = t1v1 - v1;
+    System.out.printf("T1 after encoding: %d, %f\n", t1, t1 / (double) bytesLengthBeforeEncoding);
+    System.out.printf("V1 after encoding: %d, %f\n", v1, v1 / (double) bytesLengthBeforeEncoding);
   }
 
-  private static void testTimeValueCompression(BatchData batchData) throws IOException {
-    ByteBufferBitOutput out = new ByteBufferBitOutput();
-    GorillaCompressor compressor;
-    Predictor predictor = new LastValuePredictor();
-    if (!batchData.hasCurrent()) {
-      return;
-    } else {
-      long first = batchData.currentTime();
-      compressor = new GorillaCompressor(first, out, predictor);
-    }
-
+  private static void t2(BatchData batchData) throws IOException {
     PublicBAOS baos = new PublicBAOS();
+    Encoder encoder = new LongDeltaEncoder();
+
     while (batchData.hasCurrent()) {
-      compressor.addValue(batchData.currentTime(), batchData.getDouble());
-      ReadWriteIOUtils.write(batchData.currentTime(), baos);
-      ReadWriteIOUtils.write(batchData.getDouble(), baos);
+      encoder.encode(batchData.currentTime(), baos);
       batchData.next();
     }
-    compressor.close();
+    encoder.flush(baos);
 
+    t2 = baos.size();
+    System.out.printf("T2 after encoding: %d, %f\n", t2, t2 / (double) bytesLengthBeforeEncoding);
+
+    ByteBuffer byteBuffer = ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
+    byteBuffer.flip();
     batchData.resetBatchData();
-    out.getByteBuffer().flip();
-    GorillaDecompressor decompressor = new GorillaDecompressor(
-        new ByteBufferBitInput(out.getByteBuffer()), new LastValuePredictor());
-    while (batchData.hasCurrent()) {
-      Pair pair = decompressor.readPair();
-      if (pair.getTimestamp() != batchData.currentTime()
-          || pair.getDoubleValue() != batchData.getDouble()) {
-        System.out.println(pair.getTimestamp());
-        System.out.println(batchData.currentTime());
-        System.out.println(pair.getDoubleValue());
-        System.out.println(batchData.getDouble());
+    LongDeltaDecoder decoder = new LongDeltaDecoder();
+    while (decoder.hasNext(byteBuffer)) {
+      if (decoder.readLong(byteBuffer) != batchData.currentTime()) {
         throw new RuntimeException();
       }
       batchData.next();
     }
+  }
 
-    System.out.println(out.getByteBuffer().position());
-    System.out.println(baos.size());
-    System.out.println(out.getByteBuffer().position() / (double) baos.size());
+  private static void v2(BatchData batchData) throws IOException {
+    PublicBAOS baos = new PublicBAOS();
+    Encoder encoder = new DoublePrecisionEncoder();
+
+    while (batchData.hasCurrent()) {
+      encoder.encode(batchData.getDouble(), baos);
+      batchData.next();
+    }
+    encoder.flush(baos);
+
+    v2 = baos.size();
+    System.out.printf("V2 after encoding: %d, %f\n", v2, v2 / (double) bytesLengthBeforeEncoding);
+
+    ByteBuffer byteBuffer = ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
+    batchData.resetBatchData();
+    DoublePrecisionDecoder decoder = new DoublePrecisionDecoder();
+    while (decoder.hasNext(byteBuffer)) {
+      if (decoder.readDouble(byteBuffer) != batchData.getDouble()) {
+        throw new RuntimeException();
+      }
+      batchData.next();
+    }
   }
 }
 
