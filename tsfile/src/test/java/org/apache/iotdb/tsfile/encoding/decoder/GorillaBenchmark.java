@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
+import fi.iki.yak.ts.compression.gorilla.ByteBufferBitInput;
+import fi.iki.yak.ts.compression.gorilla.ByteBufferBitOutput;
+import fi.iki.yak.ts.compression.gorilla.GorillaCompressor;
+import fi.iki.yak.ts.compression.gorilla.GorillaDecompressor;
+import fi.iki.yak.ts.compression.gorilla.Pair;
+import fi.iki.yak.ts.compression.gorilla.predictors.LastValuePredictor;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder.LongDeltaDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder.LongDeltaEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.ExternalGorillaEncoder;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -36,6 +43,7 @@ public class GorillaBenchmark {
 
   private ByteBuffer internal;
   private ByteBuffer external;
+  ByteBufferBitOutput compressedOutput;
 
   @Before
   public void setUp() throws Exception {
@@ -48,12 +56,12 @@ public class GorillaBenchmark {
   }
 
   public void testEncoding() throws IOException {
-    Encoder encoder = new DoublePrecisionEncoder();
+    Encoder encoder = new LongDeltaEncoder();
     PublicBAOS publicBAOS = new PublicBAOS();
 
     long start = System.currentTimeMillis();
-    for (Double value : values) {
-      encoder.encode(value, publicBAOS);
+    for (long i = 0; i < 10000000; ++i) {
+      encoder.encode(i, publicBAOS);
     }
     encoder.flush(publicBAOS);
     long end = System.currentTimeMillis();
@@ -64,35 +72,49 @@ public class GorillaBenchmark {
     encoder = new ExternalGorillaEncoder();
     publicBAOS = new PublicBAOS();
 
-    start = System.currentTimeMillis();
-    for (Double value : values) {
-      encoder.encode(value, publicBAOS);
-    }
-    end = System.currentTimeMillis();
-    encoder.flush(publicBAOS);
-    long cost1 = end - start;
-    System.out.println(cost1);
-    ((ExternalGorillaEncoder) encoder).getByteBuffer().flip();
-    external = ((ExternalGorillaEncoder) encoder).getByteBuffer();
+//    start = System.currentTimeMillis();
+//    for (int i = 0; i < 10000000; ++i) {
+//      encoder.encode(values.get(i), publicBAOS);
+//    }
+//    end = System.currentTimeMillis();
+//    encoder.flush(publicBAOS);
+//    long cost1 = end - start;
+//    System.out.println(cost1);
+//    ((ExternalGorillaEncoder) encoder).getByteBuffer().flip();
+//    external = ((ExternalGorillaEncoder) encoder).getByteBuffer();
 
-    System.out.println((double) cost1 / cost0);
+    compressedOutput = new ByteBufferBitOutput();
+    GorillaCompressor compressor = new GorillaCompressor(0, compressedOutput,
+        new LastValuePredictor());
+    start = System.currentTimeMillis();
+    for (int i = 0; i < 10000000; ++i) {
+      compressor.addValue(i, values.get(i));
+    }
+    compressor.close();
+    end = System.currentTimeMillis();
+    System.out.println(end - start);
+//    System.out.println((double) cost1 / cost0);
   }
 
   @Test
   public void testDecoding() throws IOException {
-    Decoder decoder = new DoublePrecisionDecoder();
+    Decoder decoder = new LongDeltaDecoder();
     long start = System.currentTimeMillis();
     for (Double value : values) {
-      decoder.readDouble(internal);
+      decoder.readLong(internal);
     }
     long end = System.currentTimeMillis();
     long cost0 = end - start;
     System.out.println(cost0);
 
-    decoder = new ExternalGorillaDecoder(external);
+    compressedOutput.getByteBuffer().flip();
+    GorillaDecompressor decompressor = new GorillaDecompressor(
+        new ByteBufferBitInput(compressedOutput.getByteBuffer()), new LastValuePredictor());
     start = System.currentTimeMillis();
-    for (Double value : values) {
-      decoder.readDouble(external);
+    Pair pair;
+    while ((pair = decompressor.readPair()) != null) {
+      pair.getTimestamp();
+      pair.getDoubleValue();
     }
     end = System.currentTimeMillis();
     long cost1 = end - start;
