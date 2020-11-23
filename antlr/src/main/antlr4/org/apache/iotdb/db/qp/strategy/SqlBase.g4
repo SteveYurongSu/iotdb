@@ -106,9 +106,23 @@ selectElements
     | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
-suffixPathOrConstant
+suffixPathOrConstant // todo: rename
     : suffixPath
     | SINGLE_QUOTE_STRING_LITERAL
+    | arithmeticClause
+    ;
+
+arithmeticClause
+    : LR_BRACKET arithmeticClause RR_BRACKET
+    | PLUS arithmeticClause
+    | MINUS arithmeticClause
+    | arithmeticClause PLUS arithmeticClause
+    | arithmeticClause MINUS arithmeticClause
+    | arithmeticClause STAR arithmeticClause
+    | arithmeticClause DIV arithmeticClause
+    | arithmeticClause MOD arithmeticClause
+    | suffixPath
+    | numberLiteral
     ;
 
 functionCall
@@ -645,6 +659,11 @@ constant
     | MINUS? INT
     | stringLiteral
     | booleanClause
+    ;
+
+numberLiteral
+    : MINUS? realLiteral
+    | MINUS? INT
     ;
 
 booleanClause
@@ -1253,6 +1272,10 @@ OPERATOR_CONTAINS
 MINUS : '-';
 
 PLUS : '+';
+
+DIV : '/';
+
+MOD : '%';
 
 DOT : '.';
 
