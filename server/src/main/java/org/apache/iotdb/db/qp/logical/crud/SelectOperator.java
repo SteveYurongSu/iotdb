@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.arithmetic.context.ArithmeticContext;
 
 /**
  * this class maintains information from select clause.
@@ -30,7 +31,10 @@ public final class SelectOperator extends Operator {
 
   private List<PartialPath> suffixList;
   private List<String> aggregations;
+  private List<ArithmeticContext> arithmeticContexts;
+
   private boolean lastQuery;
+  private boolean arithmeticQuery;
 
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
@@ -40,7 +44,9 @@ public final class SelectOperator extends Operator {
     operatorType = OperatorType.SELECT;
     suffixList = new ArrayList<>();
     aggregations = new ArrayList<>();
+    arithmeticContexts = new ArrayList<>();
     lastQuery = false;
+    arithmeticQuery = false;
   }
 
   public void addSelectPath(PartialPath suffixPath) {
@@ -50,6 +56,13 @@ public final class SelectOperator extends Operator {
   public void addClusterPath(PartialPath suffixPath, String aggregation) {
     suffixList.add(suffixPath);
     aggregations.add(aggregation);
+  }
+
+  public void addArithmeticContext(ArithmeticContext arithmeticContext) {
+    arithmeticContexts.add(arithmeticContext);
+    if (arithmeticContext != null) {
+      arithmeticQuery = true;
+    }
   }
 
   public void setLastQuery() {
@@ -68,9 +81,23 @@ public final class SelectOperator extends Operator {
     suffixList = suffixPaths;
   }
 
+  public void setArithmeticContexts(List<ArithmeticContext> arithmeticContexts) {
+    this.arithmeticContexts = arithmeticContexts;
+  }
+
   public List<PartialPath> getSuffixPaths() {
     return suffixList;
   }
 
-  public boolean isLastQuery() {return this.lastQuery; }
+  public List<ArithmeticContext> getArithmeticContexts() {
+    return arithmeticContexts;
+  }
+
+  public boolean isLastQuery() {
+    return this.lastQuery;
+  }
+
+  public boolean hasArithmeticQuery() {
+    return arithmeticQuery;
+  }
 }

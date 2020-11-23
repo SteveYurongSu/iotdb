@@ -40,6 +40,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.index.common.IndexUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
@@ -91,6 +92,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ArithmeticClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AsClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AsElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClauseContext;
@@ -180,6 +182,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.StringLiteralContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathOrConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TopClauseContext;
@@ -189,6 +192,18 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
+import org.apache.iotdb.db.query.arithmetic.context.ArithmeticContext;
+import org.apache.iotdb.db.query.arithmetic.expression.BinaryExpression;
+import org.apache.iotdb.db.query.arithmetic.expression.SubtractionExpression;
+import org.apache.iotdb.db.query.arithmetic.expression.AdditionExpression;
+import org.apache.iotdb.db.query.arithmetic.expression.DivisionExpression;
+import org.apache.iotdb.db.query.arithmetic.expression.Expression;
+import org.apache.iotdb.db.query.arithmetic.expression.LiteralOperand;
+import org.apache.iotdb.db.query.arithmetic.expression.ModuloExpression;
+import org.apache.iotdb.db.query.arithmetic.expression.MultiplicationExpression;
+import org.apache.iotdb.db.query.arithmetic.expression.TimeSeriesOperand;
+import org.apache.iotdb.db.query.arithmetic.expression.UnaryExpression;
+import org.apache.iotdb.db.query.arithmetic.expression.MinusExpression;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
@@ -199,7 +214,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.db.index.common.IndexType;
 
 /**
  * This class is a listener and you can get an operator which is a logical plan.
@@ -220,8 +234,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private QueryIndexOperator queryIndexOp;
   private int indexTopK = NON_SET_TOP_K;
   private static final String DELETE_RANGE_ERROR_MSG =
-    "For delete statement, where clause can only contain atomic expressions like : " +
-      "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+      "For delete statement, where clause can only contain atomic expressions like : " +
+          "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
 
 
   LogicalGenerator(ZoneId zoneId) {
@@ -236,7 +250,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountTimeseries(CountTimeseriesContext ctx) {
     super.enterCountTimeseries(ctx);
     PrefixPathContext pathContext = ctx.prefixPath();
-    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext)
+        : new PartialPath(SQLConstant.getSingleRootArray()));
     if (ctx.INT() != null) {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           path, Integer.parseInt(ctx.INT().getText()));
@@ -250,7 +265,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountDevices(CountDevicesContext ctx) {
     super.enterCountDevices(ctx);
     PrefixPathContext pathContext = ctx.prefixPath();
-    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext)
+        : new PartialPath(SQLConstant.getSingleRootArray()));
     initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_DEVICES, path);
   }
 
@@ -258,7 +274,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountStorageGroup(CountStorageGroupContext ctx) {
     super.enterCountStorageGroup(ctx);
     PrefixPathContext pathContext = ctx.prefixPath();
-    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext)
+        : new PartialPath(SQLConstant.getSingleRootArray()));
     initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_STORAGE_GROUP, path);
   }
 
@@ -425,8 +442,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), orderByHeat);
     } else {
-      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new PartialPath(SQLConstant.getSingleRootArray()),
-          orderByHeat);
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
+          new PartialPath(SQLConstant.getSingleRootArray()), orderByHeat);
     }
   }
 
@@ -1359,19 +1376,69 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   @Override
   public void enterSelectElement(SelectElementContext ctx) {
-    super.enterSelectElement(ctx);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    List<SqlBaseParser.SuffixPathOrConstantContext> suffixPathOrConstants = ctx.suffixPathOrConstant();
-    for (SqlBaseParser.SuffixPathOrConstantContext suffixPathOrConstant : suffixPathOrConstants) {
+    for (SuffixPathOrConstantContext suffixPathOrConstant : ctx.suffixPathOrConstant()) {
       if (suffixPathOrConstant.suffixPath() != null) {
-        PartialPath path = parseSuffixPath(suffixPathOrConstant.suffixPath());
-        selectOp.addSelectPath(path);
+        selectOp.addSelectPath(parseSuffixPath(suffixPathOrConstant.suffixPath()));
+        selectOp.addArithmeticContext(null);
+      } else if (suffixPathOrConstant.SINGLE_QUOTE_STRING_LITERAL() != null) {
+        selectOp.addSelectPath(new PartialPath(
+            new String[]{suffixPathOrConstant.SINGLE_QUOTE_STRING_LITERAL().getText()}));
+        selectOp.addArithmeticContext(null);
       } else {
-        PartialPath path = new PartialPath(new String[]{suffixPathOrConstant.SINGLE_QUOTE_STRING_LITERAL().getText()});
-        selectOp.addSelectPath(path);
+        selectOp.addSelectPath(null);
+        selectOp
+            .addArithmeticContext(parseArithmeticContext(suffixPathOrConstant.arithmeticClause()));
       }
     }
     queryOp.setSelectOperator(selectOp);
+  }
+
+  private ArithmeticContext parseArithmeticContext(ArithmeticClauseContext arithmeticClause) {
+    ArithmeticContext arithmeticContext = new ArithmeticContext();
+    Expression expression = parseArithmeticExpression(arithmeticClause);
+    return arithmeticContext;
+  }
+
+  private Expression parseArithmeticExpression(ArithmeticClauseContext arithmeticClause) {
+    Expression expression;
+
+    if (arithmeticClause.LR_BRACKET() != null) {
+      return parseArithmeticExpression(arithmeticClause.arithmeticClause(0));
+    } else if (arithmeticClause.PLUS() != null && arithmeticClause.left == null) {
+      return parseArithmeticExpression(arithmeticClause.arithmeticClause(0));
+    } else if (arithmeticClause.MINUS() != null && arithmeticClause.left == null) {
+      expression = new MinusExpression();
+    } else if (arithmeticClause.STAR() != null) {
+      expression = new MultiplicationExpression();
+    } else if (arithmeticClause.DIV() != null) {
+      expression = new DivisionExpression();
+    } else if (arithmeticClause.MOD() != null) {
+      expression = new ModuloExpression();
+    } else if (arithmeticClause.PLUS() != null) {
+      expression = new AdditionExpression();
+    } else if (arithmeticClause.MINUS() != null) {
+      expression = new SubtractionExpression();
+    } else if (arithmeticClause.numberLiteral() != null) {
+      return new LiteralOperand(Double.parseDouble(arithmeticClause.numberLiteral().getText()));
+    } else if (arithmeticClause.suffixPath() != null) {
+      return new TimeSeriesOperand(parseSuffixPath(arithmeticClause.suffixPath()));
+    } else {
+      return new TimeSeriesOperand(new PartialPath(
+          new String[]{arithmeticClause.SINGLE_QUOTE_STRING_LITERAL().getText()}));
+    }
+
+    if (expression instanceof UnaryExpression) {
+      ((UnaryExpression) expression)
+          .setExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(0)));
+    } else {
+      ((BinaryExpression) expression)
+          .setLeftExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(0)));
+      ((BinaryExpression) expression)
+          .setRightExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(1)));
+    }
+
+    return expression;
   }
 
   @Override
@@ -1433,7 +1500,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     updateOp.setSelectOperator(selectOp);
     updateOp.setValue(ctx.constant().getText());
   }
-
 
   private PartialPath parsePrefixPath(PrefixPathContext ctx) {
     List<NodeNameContext> nodeNames = ctx.nodeName();
@@ -1909,8 +1975,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       queryValid = false;
     } else {
       AndExpressionContext and = or.andExpression(0);
-      if (and.predicate() == null || and.predicate(0).indexPredicateClause() == null)
+      if (and.predicate() == null || and.predicate(0).indexPredicateClause() == null) {
         queryValid = false;
+      }
     }
     if (!queryValid) {
       throw new SQLParserException(
