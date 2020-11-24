@@ -114,16 +114,12 @@ suffixPathOrConstant // todo: rename
 
 arithmeticClause
     : LR_BRACKET arithmeticClause RR_BRACKET
-    | op=PLUS right=arithmeticClause
-    | op=MINUS right=arithmeticClause
-    | left=arithmeticClause op=STAR right=arithmeticClause
-    | left=arithmeticClause op=DIV right=arithmeticClause
-    | left=arithmeticClause op=MOD right=arithmeticClause
-    | left=arithmeticClause op=PLUS right=arithmeticClause
-    | left=arithmeticClause op=MINUS right=arithmeticClause
+    | op1=(PLUS | MINUS) right=arithmeticClause
+    | left=arithmeticClause op2=(STAR | DIV | MOD) right=arithmeticClause
+    | left=arithmeticClause op3=(PLUS | MINUS) right=arithmeticClause
+    | numberLiteral
     | suffixPath
     | SINGLE_QUOTE_STRING_LITERAL
-    | numberLiteral
     ;
 
 functionCall

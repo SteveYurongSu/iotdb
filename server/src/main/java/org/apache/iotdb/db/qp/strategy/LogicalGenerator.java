@@ -1405,20 +1405,26 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
     if (arithmeticClause.LR_BRACKET() != null) {
       return parseArithmeticExpression(arithmeticClause.arithmeticClause(0));
-    } else if (arithmeticClause.PLUS() != null && arithmeticClause.left == null) {
-      return parseArithmeticExpression(arithmeticClause.arithmeticClause(0));
-    } else if (arithmeticClause.MINUS() != null && arithmeticClause.left == null) {
-      expression = new MinusExpression();
-    } else if (arithmeticClause.STAR() != null) {
-      expression = new MultiplicationExpression();
-    } else if (arithmeticClause.DIV() != null) {
-      expression = new DivisionExpression();
-    } else if (arithmeticClause.MOD() != null) {
-      expression = new ModuloExpression();
-    } else if (arithmeticClause.PLUS() != null) {
-      expression = new AdditionExpression();
-    } else if (arithmeticClause.MINUS() != null) {
-      expression = new SubtractionExpression();
+    } else if (arithmeticClause.op1 != null) {
+      if (arithmeticClause.PLUS() != null) {
+        return parseArithmeticExpression(arithmeticClause.arithmeticClause(0));
+      } else { // arithmeticClause.MINUS()
+        expression = new MinusExpression();
+      }
+    } else if (arithmeticClause.op2 != null) {
+      if (arithmeticClause.STAR() != null) {
+        expression = new MultiplicationExpression();
+      } else if (arithmeticClause.DIV() != null) {
+        expression = new DivisionExpression();
+      } else { // arithmeticClause.MOD()
+        expression = new ModuloExpression();
+      }
+    } else if (arithmeticClause.op3 != null) {
+      if (arithmeticClause.PLUS() != null) {
+        expression = new AdditionExpression();
+      } else { // arithmeticClause.MINUS()
+        expression = new SubtractionExpression();
+      }
     } else if (arithmeticClause.numberLiteral() != null) {
       return new LiteralOperand(Double.parseDouble(arithmeticClause.numberLiteral().getText()));
     } else if (arithmeticClause.suffixPath() != null) {
@@ -1431,7 +1437,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (expression instanceof UnaryExpression) {
       ((UnaryExpression) expression)
           .setExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(0)));
-    } else {
+    } else { // BinaryExpression
       ((BinaryExpression) expression)
           .setLeftExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(0)));
       ((BinaryExpression) expression)
