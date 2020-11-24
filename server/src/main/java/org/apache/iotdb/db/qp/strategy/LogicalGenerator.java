@@ -1395,10 +1395,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   private ArithmeticContext parseArithmeticContext(ArithmeticClauseContext arithmeticClause) {
-    ArithmeticContext arithmeticContext = new ArithmeticContext();
     Map<PartialPath, TimeSeriesOperand> pathToTimeSeriesOperandMap = new HashMap<>();
     Expression expression = parseArithmeticExpression(arithmeticClause, pathToTimeSeriesOperandMap);
-    return arithmeticContext;
+    return new ArithmeticContext(expression, pathToTimeSeriesOperandMap);
   }
 
   @SuppressWarnings("squid:S3776")

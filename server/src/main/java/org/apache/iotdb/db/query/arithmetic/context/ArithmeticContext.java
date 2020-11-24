@@ -19,17 +19,27 @@
 
 package org.apache.iotdb.db.query.arithmetic.context;
 
+import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.arithmetic.expression.Expression;
+import org.apache.iotdb.db.query.arithmetic.expression.TimeSeriesOperand;
 
 public class ArithmeticContext {
 
-  protected Expression expression;
+  protected final Expression expression;
+  protected final Map<PartialPath, TimeSeriesOperand> pathToTimeSeriesOperandMap;
 
-  public void setExpression(Expression expression) {
+  public ArithmeticContext(Expression expression,
+      Map<PartialPath, TimeSeriesOperand> pathToTimeSeriesOperandMap) {
     this.expression = expression;
+    this.pathToTimeSeriesOperandMap = pathToTimeSeriesOperandMap;
   }
 
   public Expression getExpression() {
     return expression;
+  }
+
+  public Map<PartialPath, TimeSeriesOperand> getPathToTimeSeriesOperandMap() {
+    return pathToTimeSeriesOperandMap;
   }
 }
