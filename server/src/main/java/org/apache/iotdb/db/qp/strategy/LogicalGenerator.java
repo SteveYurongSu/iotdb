@@ -1396,18 +1396,23 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   private ArithmeticContext parseArithmeticContext(ArithmeticClauseContext arithmeticClause) {
     ArithmeticContext arithmeticContext = new ArithmeticContext();
-    Expression expression = parseArithmeticExpression(arithmeticClause);
+    Map<PartialPath, TimeSeriesOperand> pathToTimeSeriesOperandMap = new HashMap<>();
+    Expression expression = parseArithmeticExpression(arithmeticClause, pathToTimeSeriesOperandMap);
     return arithmeticContext;
   }
 
-  private Expression parseArithmeticExpression(ArithmeticClauseContext arithmeticClause) {
+  @SuppressWarnings("squid:S3776")
+  private Expression parseArithmeticExpression(ArithmeticClauseContext arithmeticClause,
+      Map<PartialPath, TimeSeriesOperand> pathToTimeSeriesOperandMap) {
     Expression expression;
 
     if (arithmeticClause.LR_BRACKET() != null) {
-      return parseArithmeticExpression(arithmeticClause.arithmeticClause(0));
+      return parseArithmeticExpression(arithmeticClause.arithmeticClause(0),
+          pathToTimeSeriesOperandMap);
     } else if (arithmeticClause.op1 != null) {
       if (arithmeticClause.PLUS() != null) {
-        return parseArithmeticExpression(arithmeticClause.arithmeticClause(0));
+        return parseArithmeticExpression(arithmeticClause.arithmeticClause(0),
+            pathToTimeSeriesOperandMap);
       } else { // arithmeticClause.MINUS()
         expression = new MinusExpression();
       }
@@ -1427,21 +1432,29 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       }
     } else if (arithmeticClause.numberLiteral() != null) {
       return new LiteralOperand(Double.parseDouble(arithmeticClause.numberLiteral().getText()));
-    } else if (arithmeticClause.suffixPath() != null) {
-      return new TimeSeriesOperand(parseSuffixPath(arithmeticClause.suffixPath()));
     } else {
-      return new TimeSeriesOperand(new PartialPath(
-          new String[]{arithmeticClause.SINGLE_QUOTE_STRING_LITERAL().getText()}));
+      PartialPath path = arithmeticClause.suffixPath() != null
+          ? parseSuffixPath(arithmeticClause.suffixPath())
+          : new PartialPath(new String[]{arithmeticClause.SINGLE_QUOTE_STRING_LITERAL().getText()});
+      TimeSeriesOperand timeSeriesOperand = pathToTimeSeriesOperandMap.get(path);
+      if (timeSeriesOperand == null) {
+        timeSeriesOperand = new TimeSeriesOperand(path);
+        pathToTimeSeriesOperandMap.put(path, timeSeriesOperand);
+      }
+      return timeSeriesOperand;
     }
 
     if (expression instanceof UnaryExpression) {
       ((UnaryExpression) expression)
-          .setExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(0)));
+          .setExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(0),
+              pathToTimeSeriesOperandMap));
     } else { // BinaryExpression
-      ((BinaryExpression) expression)
-          .setLeftExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(0)));
-      ((BinaryExpression) expression)
-          .setRightExpression(parseArithmeticExpression(arithmeticClause.arithmeticClause(1)));
+      ((BinaryExpression) expression).setLeftExpression(
+          parseArithmeticExpression(arithmeticClause.arithmeticClause(0),
+              pathToTimeSeriesOperandMap));
+      ((BinaryExpression) expression).setRightExpression(
+          parseArithmeticExpression(arithmeticClause.arithmeticClause(1),
+              pathToTimeSeriesOperandMap));
     }
 
     return expression;
