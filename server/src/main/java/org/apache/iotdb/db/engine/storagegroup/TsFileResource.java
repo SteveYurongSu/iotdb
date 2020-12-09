@@ -309,16 +309,16 @@ public class TsFileResource {
       this.endTimes = endTimesArray;
       this.deviceToIndex = deviceMap;
 
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
-      }
+//      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+//      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+//
+//      if (inputStream.available() > 0) {
+//        String modFileName = ReadWriteIOUtils.readString(inputStream);
+//        if (modFileName != null) {
+//          File modF = new File(file.getParentFile(), modFileName);
+//          modFile = new ModificationFile(modF.getPath());
+//        }
+//      }
     }
   }
 
