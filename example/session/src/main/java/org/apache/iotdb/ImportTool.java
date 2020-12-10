@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ImportTool {
 
@@ -80,14 +81,17 @@ public class ImportTool {
 
   private static void doImport(String device, Statistics statistics)
       throws StatementExecutionException, IoTDBConnectionException, IllegalPathException {
-    SessionDataSet sessionDataSet = sourceSession
-        .executeQueryStatement("select * from " + device);
+    SessionDataSet sessionDataSet = sourceSession.executeQueryStatement("select * from " + device);
     List<String> columnNames = sessionDataSet.getColumnNames();
     List<TSDataType> columnTypes = sessionDataSet.getColumnTypes();
     System.out.println("Creating timeseries...");
     createTimeSeries(columnTypes, columnNames);
     System.out.println("Creating timeseries ... done!");
+    int count = 0;
     while (sessionDataSet.hasNext()) {
+      if (++count % 1000 == 0) {
+        System.out.println("Importing ... " + count);
+      }
       RowRecord rowRecord = sessionDataSet.next();
       importRecord(device, rowRecord, columnNames, columnTypes, statistics);
     }
@@ -103,14 +107,29 @@ public class ImportTool {
     List<Field> fields = rowRecord.getFields();
     for (int i = 0; i < fields.size(); ++i) {
       Field field = fields.get(i);
-      if (field == null) {
+      if (field == null || field.isNull()) {
         continue;
       }
+      Object o = field.getObjectValue(columnTypes.get(i));
+      if (o instanceof Binary) {
+        o = ((Binary) o).getStringValue();
+      }
+      if (o == null) {
+        continue;
+      }
+      values.add(o);
       measurements.add(columnNames.get(i));
       types.add(columnTypes.get(i));
-      values.add(field.getObjectValue(columnTypes.get(i)));
-      targetSession.insertRecord(deviceId, rowRecord.getTimestamp(), measurements, types, values);
       statistics.update(columnTypes.get(i));
+    }
+
+    try {
+      targetSession.insertRecord(deviceId, rowRecord.getTimestamp(), measurements, types, values);
+    } catch (NullPointerException e) {
+      e.printStackTrace();
+      System.out.println(fields);
+      System.out.println(values.contains(null));
+      throw e;
     }
   }
 
@@ -127,7 +146,10 @@ public class ImportTool {
 
   private static void createTimeSeries(List<TSDataType> columnTypes, List<String> columnNames)
       throws StatementExecutionException, IllegalPathException, IoTDBConnectionException {
-    for (int i = 0; i < columnNames.size(); ++i) {
+    for (int i = 1; i < columnNames.size(); ++i) {
+      if (i % 100 == 0) {
+        System.out.println((i - 1) + " / " + (columnNames.size() - 1));
+      }
       createTimeSeries(columnTypes.get(i), columnNames.get(i));
     }
   }
@@ -178,6 +200,10 @@ public class ImportTool {
         "select max_value(" + sensor + "), min_value(" + sensor + ") from " + device);
     if (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
+      if (rowRecord.getFields().get(0) == null || rowRecord.getFields().get(0).isNull()
+          || rowRecord.getFields().get(1) == null || rowRecord.getFields().get(1).isNull()) {
+        return 0;
+      }
       switch (dataType) {
         case INT32:
           return (double) rowRecord.getFields().get(0).getIntV() - rowRecord.getFields().get(1)
@@ -225,7 +251,7 @@ public class ImportTool {
       );
       csvPrinter.flush();
       csvPrinter.close();
-      System.out.printf("%s: %d, %d, %d, %d, %d, %d\n", device,
+      System.out.printf("##### %s: %d, %d, %d, %d, %d, %d\n", device,
           statistics[TSDataType.INT32.ordinal()],
           statistics[TSDataType.INT64.ordinal()],
           statistics[TSDataType.FLOAT.ordinal()],
