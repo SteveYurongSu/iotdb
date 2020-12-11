@@ -34,6 +34,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,7 +44,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ImportTool {
 
-  private static final double ERROR_BOUND = 0.10;
+  private static final double ERROR_BOUND = 1;
 
   private static Session sourceSession;
   private static Session targetSession;
@@ -76,6 +77,9 @@ public class ImportTool {
       long endTime = System.currentTimeMillis();
       System.out.println(
           "Time cost (" + count + " / " + devices.size() + "): " + (endTime - startTime) + "ms");
+      if (count == 1) {
+        break;
+      }
     }
   }
 
@@ -91,9 +95,13 @@ public class ImportTool {
     while (sessionDataSet.hasNext()) {
       if (++count % 1000 == 0) {
         System.out.println("Importing ... " + count);
+        statistics.printReport();
       }
       RowRecord rowRecord = sessionDataSet.next();
       importRecord(device, rowRecord, columnNames, columnTypes, statistics);
+      if (count == 100000) {
+        break;
+      }
     }
   }
 
@@ -111,11 +119,12 @@ public class ImportTool {
         continue;
       }
       Object o = field.getObjectValue(columnTypes.get(i));
-      if (o instanceof Binary) {
-        o = ((Binary) o).getStringValue();
-      }
       if (o == null) {
         continue;
+      }
+      if (o instanceof Binary) {
+        o = ((Binary) o).getStringValue();
+        statistics.updateStringStatistics((String) o);
       }
       values.add(o);
       measurements.add(columnNames.get(i));
@@ -129,6 +138,11 @@ public class ImportTool {
       e.printStackTrace();
       System.out.println(fields);
       System.out.println(values.contains(null));
+      try {
+        statistics.report();
+      } catch (IOException ioException) {
+        ioException.printStackTrace();
+      }
       throw e;
     }
   }
@@ -163,7 +177,7 @@ public class ImportTool {
       Map<String, String> props = new HashMap<>();
       props.put("loss", "sdt");
       props.put("compMin", "2");
-      props.put("compMax", "5000");
+      props.put("compMax", "10000");
       switch (dataType) {
         case BOOLEAN:
           targetSession
@@ -183,8 +197,11 @@ public class ImportTool {
           break;
         case FLOAT:
         case DOUBLE:
-          props.put("compDev",
-              String.valueOf(ERROR_BOUND * getMaxMinDelta(dataType, device, sensor)));
+          double error = ERROR_BOUND * getMaxMinDelta(dataType, device, sensor);
+          if (error < 1) {
+            error = 1;
+          }
+          props.put("compDev", String.valueOf(error));
           targetSession.createTimeseries(seriesPath, dataType, TSEncoding.GORILLA,
               CompressionType.SNAPPY, props, null, null, null);
           break;
@@ -197,45 +214,57 @@ public class ImportTool {
   private static double getMaxMinDelta(TSDataType dataType, String device, String sensor)
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = sourceSession.executeQueryStatement(
-        "select max_value(" + sensor + "), min_value(" + sensor + ") from " + device);
+        "select max_value(" + sensor + "), min_value(" + sensor + "), avg(" + sensor + "), count("
+            + sensor + ") from " + device);
     if (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
       if (rowRecord.getFields().get(0) == null || rowRecord.getFields().get(0).isNull()
           || rowRecord.getFields().get(1) == null || rowRecord.getFields().get(1).isNull()) {
-        return 0;
+        return 1;
       }
+      double delte = 0;
       switch (dataType) {
         case INT32:
-          return (double) rowRecord.getFields().get(0).getIntV() - rowRecord.getFields().get(1)
+          delte = (double) rowRecord.getFields().get(0).getIntV() - rowRecord.getFields().get(1)
               .getIntV();
-        case INT64:
-          return (double) rowRecord.getFields().get(0).getLongV() - rowRecord.getFields().get(1)
-              .getLongV();
-        case FLOAT:
-          return (double) rowRecord.getFields().get(0).getFloatV() - rowRecord.getFields().get(1)
-              .getFloatV();
-        case DOUBLE:
-          return rowRecord.getFields().get(0).getDoubleV() - rowRecord.getFields().get(1)
-              .getDoubleV();
-        default:
           break;
+        case INT64:
+          delte = (double) rowRecord.getFields().get(0).getLongV() - rowRecord.getFields().get(1)
+              .getLongV();
+          break;
+        case FLOAT:
+          delte = (double) rowRecord.getFields().get(0).getFloatV() - rowRecord.getFields().get(1)
+              .getFloatV();
+          break;
+        case DOUBLE:
+          delte = rowRecord.getFields().get(0).getDoubleV() - rowRecord.getFields().get(1)
+              .getDoubleV();
+          break;
+        default:
+          throw new RuntimeException("Unsupported data type.");
       }
+      return delte < 1 ? 10 : delte;
     }
     throw new RuntimeException("Unsupported data type.");
   }
 
   private static class Statistics {
 
-    private final int[] statistics;
+    private final long[] statistics;
     private final String device;
+    private long stringStatistics;
 
     public Statistics(String device) {
-      this.statistics = new int[TSDataType.values().length];
+      this.statistics = new long[TSDataType.values().length];
       this.device = device;
     }
 
     void update(TSDataType dataType) {
       statistics[dataType.ordinal()]++;
+    }
+
+    void updateStringStatistics(String s) {
+      stringStatistics += s.getBytes(TSFileConfig.STRING_CHARSET).length;
     }
 
     void report() throws IOException {
@@ -247,17 +276,24 @@ public class ImportTool {
           statistics[TSDataType.FLOAT.ordinal()],
           statistics[TSDataType.DOUBLE.ordinal()],
           statistics[TSDataType.BOOLEAN.ordinal()],
-          statistics[TSDataType.TEXT.ordinal()]
+          statistics[TSDataType.TEXT.ordinal()],
+          stringStatistics
       );
       csvPrinter.flush();
       csvPrinter.close();
-      System.out.printf("##### %s: %d, %d, %d, %d, %d, %d\n", device,
+      printReport();
+    }
+
+    void printReport() {
+      System.out.printf("##### %s: %d, %d, %d, %d, %d, %d, %d\n", device,
           statistics[TSDataType.INT32.ordinal()],
           statistics[TSDataType.INT64.ordinal()],
           statistics[TSDataType.FLOAT.ordinal()],
           statistics[TSDataType.DOUBLE.ordinal()],
           statistics[TSDataType.BOOLEAN.ordinal()],
-          statistics[TSDataType.TEXT.ordinal()]);
+          statistics[TSDataType.TEXT.ordinal()],
+          stringStatistics
+      );
     }
   }
 }
