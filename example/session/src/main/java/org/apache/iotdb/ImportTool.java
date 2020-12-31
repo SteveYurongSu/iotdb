@@ -29,7 +29,6 @@ import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -44,8 +43,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ImportTool {
 
-  private static final double ERROR_BOUND = 1;
-
   private static Session sourceSession;
   private static Session targetSession;
 
@@ -55,6 +52,7 @@ public class ImportTool {
     targetSession = new Session("127.0.0.1", 6668, "root", "root");
     targetSession.open(false);
 
+    importAll("root.group_9");
     importAll("root.group_69");
 
     targetSession.close();
@@ -77,9 +75,9 @@ public class ImportTool {
       long endTime = System.currentTimeMillis();
       System.out.println(
           "Time cost (" + count + " / " + devices.size() + "): " + (endTime - startTime) + "ms");
-      if (count == 1) {
-        break;
-      }
+      System.out.println(
+          "Time cost (" + count + " / " + devices.size() + "): "
+              + (endTime - startTime) / 1000 / 3600 + "h");
     }
   }
 
@@ -93,15 +91,12 @@ public class ImportTool {
     System.out.println("Creating timeseries ... done!");
     int count = 0;
     while (sessionDataSet.hasNext()) {
-      if (++count % 1000 == 0) {
+      if (count++ % 1000 == 0) {
         System.out.println("Importing ... " + count);
         statistics.printReport();
       }
       RowRecord rowRecord = sessionDataSet.next();
       importRecord(device, rowRecord, columnNames, columnTypes, statistics);
-      if (count == 100000) {
-        break;
-      }
     }
   }
 
@@ -161,7 +156,7 @@ public class ImportTool {
   private static void createTimeSeries(List<TSDataType> columnTypes, List<String> columnNames)
       throws StatementExecutionException, IllegalPathException, IoTDBConnectionException {
     for (int i = 1; i < columnNames.size(); ++i) {
-      if (i % 100 == 0) {
+      if (i % 101 == 0) {
         System.out.println((i - 1) + " / " + (columnNames.size() - 1));
       }
       createTimeSeries(columnTypes.get(i), columnNames.get(i));
@@ -169,10 +164,7 @@ public class ImportTool {
   }
 
   private static void createTimeSeries(TSDataType dataType, String seriesPath)
-      throws StatementExecutionException, IoTDBConnectionException, IllegalPathException {
-    PartialPath path = new PartialPath(seriesPath);
-    String device = path.getDevice();
-    String sensor = path.getMeasurement();
+      throws StatementExecutionException, IoTDBConnectionException {
     if (!targetSession.checkTimeseriesExists(seriesPath)) {
       Map<String, String> props = new HashMap<>();
       props.put("loss", "sdt");
@@ -191,17 +183,13 @@ public class ImportTool {
           break;
         case INT32:
         case INT64:
-          targetSession
-              .createTimeseries(seriesPath, dataType, TSEncoding.GORILLA, CompressionType.SNAPPY,
-                  null, null, null, null);
+          props.put("compDev", String.valueOf(0.1));
+          targetSession.createTimeseries(seriesPath, dataType, TSEncoding.GORILLA,
+              CompressionType.SNAPPY, props, null, null, null);
           break;
         case FLOAT:
         case DOUBLE:
-          double error = ERROR_BOUND * getMaxMinDelta(dataType, device, sensor);
-          if (error < 1) {
-            error = 1;
-          }
-          props.put("compDev", String.valueOf(error));
+          props.put("compDev", String.valueOf(0.01));
           targetSession.createTimeseries(seriesPath, dataType, TSEncoding.GORILLA,
               CompressionType.SNAPPY, props, null, null, null);
           break;
@@ -209,43 +197,6 @@ public class ImportTool {
           System.out.println("error occurred in createTimeSeries.");
       }
     }
-  }
-
-  private static double getMaxMinDelta(TSDataType dataType, String device, String sensor)
-      throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet sessionDataSet = sourceSession.executeQueryStatement(
-        "select max_value(" + sensor + "), min_value(" + sensor + "), avg(" + sensor + "), count("
-            + sensor + ") from " + device);
-    if (sessionDataSet.hasNext()) {
-      RowRecord rowRecord = sessionDataSet.next();
-      if (rowRecord.getFields().get(0) == null || rowRecord.getFields().get(0).isNull()
-          || rowRecord.getFields().get(1) == null || rowRecord.getFields().get(1).isNull()) {
-        return 1;
-      }
-      double delte = 0;
-      switch (dataType) {
-        case INT32:
-          delte = (double) rowRecord.getFields().get(0).getIntV() - rowRecord.getFields().get(1)
-              .getIntV();
-          break;
-        case INT64:
-          delte = (double) rowRecord.getFields().get(0).getLongV() - rowRecord.getFields().get(1)
-              .getLongV();
-          break;
-        case FLOAT:
-          delte = (double) rowRecord.getFields().get(0).getFloatV() - rowRecord.getFields().get(1)
-              .getFloatV();
-          break;
-        case DOUBLE:
-          delte = rowRecord.getFields().get(0).getDoubleV() - rowRecord.getFields().get(1)
-              .getDoubleV();
-          break;
-        default:
-          throw new RuntimeException("Unsupported data type.");
-      }
-      return delte < 1 ? 10 : delte;
-    }
-    throw new RuntimeException("Unsupported data type.");
   }
 
   private static class Statistics {
@@ -277,7 +228,13 @@ public class ImportTool {
           statistics[TSDataType.DOUBLE.ordinal()],
           statistics[TSDataType.BOOLEAN.ordinal()],
           statistics[TSDataType.TEXT.ordinal()],
-          stringStatistics
+          stringStatistics,
+          statistics[TSDataType.INT32.ordinal()] * 4 +
+              statistics[TSDataType.INT64.ordinal()] * 8 +
+              statistics[TSDataType.FLOAT.ordinal()] * 4 +
+              statistics[TSDataType.DOUBLE.ordinal()] * 8 +
+              statistics[TSDataType.BOOLEAN.ordinal()] +
+              stringStatistics
       );
       csvPrinter.flush();
       csvPrinter.close();
@@ -292,7 +249,13 @@ public class ImportTool {
           statistics[TSDataType.DOUBLE.ordinal()],
           statistics[TSDataType.BOOLEAN.ordinal()],
           statistics[TSDataType.TEXT.ordinal()],
-          stringStatistics
+          stringStatistics,
+          statistics[TSDataType.INT32.ordinal()] * 4 +
+              statistics[TSDataType.INT64.ordinal()] * 8 +
+              statistics[TSDataType.FLOAT.ordinal()] * 4 +
+              statistics[TSDataType.DOUBLE.ordinal()] * 8 +
+              statistics[TSDataType.BOOLEAN.ordinal()] +
+              stringStatistics
       );
     }
   }
