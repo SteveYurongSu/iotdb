@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -102,7 +103,7 @@ public class ImportTool {
 
   private static void importRecord(String deviceId, RowRecord rowRecord,
       List<String> columnNames, List<TSDataType> columnTypes, Statistics statistics)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws StatementExecutionException, IoTDBConnectionException, IllegalPathException {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     List<Object> values = new ArrayList<>();
@@ -122,7 +123,8 @@ public class ImportTool {
         statistics.updateStringStatistics((String) o);
       }
       values.add(o);
-      measurements.add(columnNames.get(i));
+      PartialPath partialPath = new PartialPath(columnNames.get(i));
+      measurements.add(partialPath.getMeasurement());
       types.add(columnTypes.get(i));
       statistics.update(columnTypes.get(i));
     }
