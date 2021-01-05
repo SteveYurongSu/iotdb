@@ -185,9 +185,10 @@ public class ImportTool {
           break;
         case INT32:
         case INT64:
-          props.put("compDev", String.valueOf(1));
-          targetSession.createTimeseries(seriesPath, dataType, TSEncoding.GORILLA,
-              CompressionType.SNAPPY, props, null, null, null);
+          props.put("compDev", String.valueOf(10));
+          targetSession
+              .createTimeseries(seriesPath, dataType, TSEncoding.RLE, CompressionType.SNAPPY, props,
+                  null, null, null);
           break;
         case FLOAT:
         case DOUBLE:
