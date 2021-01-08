@@ -78,7 +78,7 @@ public class ImportTool {
           "Time cost (" + count + " / " + devices.size() + "): " + (endTime - startTime) + "ms");
       System.out.println(
           "Time cost (" + count + " / " + devices.size() + "): "
-              + (endTime - startTime) / 1000 / 3600 + "h");
+              + ((double) endTime - startTime) / 1000 / 3600 + "h");
     }
   }
 
@@ -171,7 +171,7 @@ public class ImportTool {
       Map<String, String> props = new HashMap<>();
       props.put("loss", "sdt");
       props.put("compMin", "2");
-      props.put("compMax", "10000");
+      props.put("compMax", "1000000");
       switch (dataType) {
         case BOOLEAN:
           targetSession
@@ -185,7 +185,7 @@ public class ImportTool {
           break;
         case INT32:
         case INT64:
-          props.put("compDev", String.valueOf(10));
+          props.put("compDev", String.valueOf(0.1));
           targetSession
               .createTimeseries(seriesPath, dataType, TSEncoding.RLE, CompressionType.SNAPPY, props,
                   null, null, null);
@@ -245,7 +245,7 @@ public class ImportTool {
     }
 
     void printReport() {
-      System.out.printf("##### %s: %d, %d, %d, %d, %d, %d, %d\n", device,
+      System.out.printf("##### %s: %d, %d, %d, %d, %d, %d, %d, %d\n", device,
           statistics[TSDataType.INT32.ordinal()],
           statistics[TSDataType.INT64.ordinal()],
           statistics[TSDataType.FLOAT.ordinal()],
