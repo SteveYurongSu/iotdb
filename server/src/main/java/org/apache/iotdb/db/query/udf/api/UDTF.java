@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.udf.api;
 
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.access.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
@@ -39,14 +39,13 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAc
  * <p>
  * A complete UDTF needs to override at least the following methods:
  * <ul>
- * <li>{@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}
- * <li>{@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row,
- * PointCollector)}
+ * <li>{@link UDTF#beforeStart(UDFParameters, UDFConfigurations)}
+ * <li>{@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row, PointCollector)}
  * </ul>
  * In the life cycle of a UDTF instance, the calling sequence of each method is as follows:
  * <p>
  * 1. {@link UDTF#validate(UDFParameterValidator)}
- * 2. {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}
+ * 2. {@link UDTF#beforeStart(UDFParameters, UDFConfigurations)}
  * 3. {@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row, PointCollector)}
  * 4. {@link UDTF#terminate(PointCollector)}
  * 5. {@link UDTF#beforeDestroy()}
@@ -57,29 +56,8 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAc
 public interface UDTF extends UDF {
 
   /**
-   * This method is mainly used to customize UDTF. In this method, the user can do the following
-   * things:
-   * <ul>
-   * <li> Use UDFParameters to get the time series paths and parse key-value pair attributes entered
-   * by the user.
-   * <li> Set the strategy to access the original data and set the output data type in
-   * UDTFConfigurations.
-   * <li> Create resources, such as establishing external connections, opening files, etc.
-   * </ul>
-   * <p>
-   * This method is called after the UDTF is instantiated and before the beginning of the
-   * transformation process.
-   *
-   * @param parameters     used to parse the input parameters entered by the user
-   * @param configurations used to set the required properties in the UDTF
-   * @throws Exception the user can throw errors if necessary
-   */
-  @SuppressWarnings("squid:S112")
-  void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception;
-
-  /**
    * When the user specifies {@link RowByRowAccessStrategy} to access the original data in {@link
-   * UDTFConfigurations}, this method will be called to process the transformation. In a single UDF
+   * UDFConfigurations}, this method will be called to process the transformation. In a single UDF
    * query, this method may be called multiple times.
    *
    * @param row       original input data row (aligned by time)
@@ -93,9 +71,9 @@ public interface UDTF extends UDF {
 
   /**
    * When the user specifies {@link SlidingSizeWindowAccessStrategy} or {@link
-   * SlidingTimeWindowAccessStrategy} to access the original data in {@link UDTFConfigurations},
-   * this method will be called to process the transformation. In a single UDF query, this method
-   * may be called multiple times.
+   * SlidingTimeWindowAccessStrategy} to access the original data in {@link UDFConfigurations}, this
+   * method will be called to process the transformation. In a single UDF query, this method may be
+   * called multiple times.
    *
    * @param rowWindow original input data window (rows inside the window are aligned by time)
    * @param collector used to collect output data points

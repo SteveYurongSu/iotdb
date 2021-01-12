@@ -23,8 +23,8 @@ import java.io.IOException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.access.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
@@ -52,7 +52,7 @@ public abstract class UDTFMath implements UDTF {
   }
 
   @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+  public void beforeStart(UDFParameters parameters, UDFConfigurations configurations)
       throws MetadataException {
     dataType = parameters.getDataType(0);
     configurations

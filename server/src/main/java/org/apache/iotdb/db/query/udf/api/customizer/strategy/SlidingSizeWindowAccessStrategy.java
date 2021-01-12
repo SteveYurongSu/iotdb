@@ -20,35 +20,37 @@
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.api.UDAF;
+import org.apache.iotdb.db.query.udf.api.UDF;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.access.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 
 /**
- * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+ * Used in {@link UDF#beforeStart(UDFParameters, UDFConfigurations)}.
  * <p>
- * When the access strategy of a UDTF is set to an instance of this class, the method {@link
- * UDTF#transform(RowWindow, PointCollector)} of the UDTF will be called to transform the original
- * data. You need to override the method in your own UDTF class.
+ * When the access strategy of a UDF is set to an instance of this class, the method {@link
+ * UDTF#transform(RowWindow, PointCollector)} or {@link UDAF#iterate(RowWindow)} will be called to
+ * consume the original data. You need to override the method in your own UDF class.
  * <p>
  * Sliding size window is a kind of size-based window. Except for the last call, each call of the
- * method {@link UDTF#transform(RowWindow, PointCollector)} processes a window with {@code
- * windowSize} rows (aligned by time) of the original data and can generate any number of data
- * points.
+ * method {@link UDTF#transform(RowWindow, PointCollector)} or {@link UDAF#iterate(RowWindow)}
+ * processes a window with {@code windowSize} rows (aligned by time) of the original data.
  * <p>
  * Sample code:
  * <pre>{@code
  * @Override
- * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+ * public void beforeStart(UDFParameters parameters, UDFConfigurations configurations) {
  *   configurations
  *       .setOutputDataType(TSDataType.INT32)
  *       .setAccessStrategy(new SlidingSizeWindowAccessStrategy(10000)); // window size
  * }</pre>
  *
  * @see UDTF
- * @see UDTFConfigurations
+ * @see UDAF
+ * @see UDFConfigurations
  */
 public class SlidingSizeWindowAccessStrategy implements AccessStrategy {
 

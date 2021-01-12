@@ -22,31 +22,33 @@ package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.query.udf.api.UDAF;
+import org.apache.iotdb.db.query.udf.api.UDF;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.access.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 
 /**
- * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+ * Used in {@link UDF#beforeStart(UDFParameters, UDFConfigurations)}.
  * <p>
- * When the access strategy of a UDTF is set to an instance of this class, the method {@link
- * UDTF#transform(RowWindow, PointCollector)} of the UDTF will be called to transform the original
- * data. You need to override the method in your own UDTF class.
+ * When the access strategy of a UDF is set to an instance of this class, the method {@link
+ * UDTF#transform(RowWindow, PointCollector)} or {@link UDAF#iterate(RowWindow)} will be called to
+ * consume the original data. You need to override the method in your own UDF class.
  * <p>
  * Sliding time window is a kind of time-based window. To partition the raw query data set into
  * sliding time windows, you need to give the following 4 parameters:
  * <p>
  * <li> display window begin: determines the start time of the first window
  * <li> display window end: if the start time of current window + sliding step > display window
- * end, then current window is the last window that your UDTF can process
+ * end, then current window is the last window that your UDF can process
  * <li> time interval: determines the time range of a window
  * <li> sliding step: the start time of the next window = the start time of current window +
  * sliding step
  * <p>
- * Each call of the method {@link UDTF#transform(RowWindow, PointCollector)} processes one time
- * window and can generate any number of data points. Note that the transform method will still be
+ * Each call of the method {@link UDTF#transform(RowWindow, PointCollector)} or {@link
+ * UDAF#iterate(RowWindow)} processes only one time window. Note that the method will still be
  * called when there is no data point in a window. Note that the time range of the last few windows
  * may be less than the specified time interval.
  * <p>
@@ -54,7 +56,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
  * <p>Style 1:
  * <pre>{@code
  * @Override
- * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+ * public void beforeStart(UDFParameters parameters, UDFConfigurations configurations) {
  *   configurations.setAccessStrategy(new SlidingTimeWindowAccessStrategy(
  *       parameters.getLong(100),     // time interval
  *       parameters.getLong(50),      // sliding step
@@ -64,7 +66,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
  * <p>Style 2:
  * <pre>{@code
  * @Override
- * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+ * public void beforeStart(UDFParameters parameters, UDFConfigurations configurations) {
  *   configurations.setAccessStrategy(new SlidingTimeWindowAccessStrategy(
  *       parameters.getLong("7d"),                    // time interval
  *       parameters.getLong("7d"),                    // sliding step
@@ -73,7 +75,8 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
  * }</pre>
  *
  * @see UDTF
- * @see UDTFConfigurations
+ * @see UDAF
+ * @see UDFConfigurations
  */
 public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 

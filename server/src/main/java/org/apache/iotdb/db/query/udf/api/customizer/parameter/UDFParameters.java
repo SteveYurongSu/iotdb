@@ -23,13 +23,13 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.UDF;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
- * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+ * Used in {@link UDF#beforeStart(UDFParameters, UDFConfigurations)}.
  * <p>
  * This class is used to parse the parameters in the UDF entered by the user.
  * <p>

@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.UDF;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 
 /**
- * Used to customize the strategy for accessing raw data in {@link UDTF#beforeStart(UDFParameters,
- * UDTFConfigurations)}.
+ * Used to customize the strategy for accessing raw data in {@link UDF#beforeStart(UDFParameters,
+ * UDFConfigurations)}.
  */
 public interface AccessStrategy {
 

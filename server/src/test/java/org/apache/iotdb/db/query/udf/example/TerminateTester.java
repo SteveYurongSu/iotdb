@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.udf.example;
 
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.access.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,7 +33,7 @@ public class TerminateTester implements UDTF {
   private int count;
 
   @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+  public void beforeStart(UDFParameters parameters, UDFConfigurations configurations) {
     configurations
         .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new RowByRowAccessStrategy());

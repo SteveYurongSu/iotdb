@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
@@ -34,13 +34,13 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 public class UDTFExecutor {
 
   protected final UDFContext context;
-  protected final UDTFConfigurations configurations;
+  protected final UDFConfigurations configurations;
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
 
   public UDTFExecutor(UDFContext context, ZoneId zoneId) {
     this.context = context;
-    configurations = new UDTFConfigurations(zoneId);
+    configurations = new UDFConfigurations(zoneId);
   }
 
   public void beforeStart(long queryId, float collectorMemoryBudgetInMB)
@@ -58,7 +58,7 @@ public class UDTFExecutor {
     try {
       udtf.beforeStart(parameters, configurations);
     } catch (Exception e) {
-      onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
+      onError("beforeStart(UDFParameters, UDFConfigurations)", e);
     }
     configurations.check();
 
@@ -105,7 +105,7 @@ public class UDTFExecutor {
     return context;
   }
 
-  public UDTFConfigurations getConfigurations() {
+  public UDFConfigurations getConfigurations() {
     return configurations;
   }
 
