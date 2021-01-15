@@ -53,7 +53,6 @@ public class ImportTool {
     targetSession = new Session("127.0.0.1", 6668, "root", "root");
     targetSession.open(false);
 
-    importAll("root.group_9");
     importAll("root.group_69");
 
     targetSession.close();
@@ -192,7 +191,7 @@ public class ImportTool {
           break;
         case FLOAT:
         case DOUBLE:
-          props.put("compDev", String.valueOf(0.01));
+          props.put("compDev", String.valueOf(0.1));
           targetSession.createTimeseries(seriesPath, dataType, TSEncoding.GORILLA,
               CompressionType.SNAPPY, props, null, null, null);
           break;
