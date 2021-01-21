@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.udf.builtin;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
@@ -33,6 +32,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class UDTFHiFiCos implements UDTF {
 
+  private static final String ATTRIBUTE_THRESHOLD = "threshold";
+
   private double threshold;
   private TSDataType dataType;
 
@@ -42,10 +43,10 @@ public class UDTFHiFiCos implements UDTF {
         .validateInputSeriesNumber(1) // 确保输入序列只有一个
         .validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT,
             TSDataType.DOUBLE) // 确保输入序列类型为数值类型
-        .validateRequiredAttribute("threshold") // 要求用户提供参数 threshold
+        .validateRequiredAttribute(ATTRIBUTE_THRESHOLD) // 要求用户提供参数 threshold
         .validate(threshold -> -1 <= (double) threshold && (double) threshold <= 1,
             "threshold has to be greater than or equal to -1 and less than or equal to 1.",
-            validator.getParameters().getInt("threshold")); // 限定参数 threshold 的范围 [-1, 1]
+            validator.getParameters().getDouble(ATTRIBUTE_THRESHOLD)); // 限定参数 threshold 的范围 [-1, 1]
   }
 
   @Override
@@ -55,7 +56,7 @@ public class UDTFHiFiCos implements UDTF {
         .setOutputDataType(parameters.getDataType(0)) // 输出序列类型与输入序列相同
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(3, 1)); // 按照3行数据一个窗口的方式迭代
 
-    threshold = parameters.getDouble("threshold"); // 从用户SQL中获取参数 threshold
+    threshold = parameters.getDouble(ATTRIBUTE_THRESHOLD); // 从用户SQL中获取参数 threshold
     dataType = parameters.getDataType(0);
   }
 
@@ -84,17 +85,13 @@ public class UDTFHiFiCos implements UDTF {
   }
 
   private void transformDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
-    Row lastRow = rowWindow.getRow(0);
-    Row currentRow = rowWindow.getRow(1);
-    Row nextRow = rowWindow.getRow(2);
+    long lastTime = rowWindow.getRow(0).getTime();
+    long currentTime = rowWindow.getRow(1).getTime();
+    long nextTime = rowWindow.getRow(2).getTime();
 
-    long lastTime = lastRow.getTime();
-    long currentTime = currentRow.getTime();
-    long nextTime = nextRow.getTime();
-
-    double lastValue = lastRow.getDouble(0);
-    double currentValue = currentRow.getDouble(0);
-    double nextValue = nextRow.getDouble(0);
+    double lastValue = rowWindow.getRow(0).getDouble(0);
+    double currentValue = rowWindow.getRow(1).getDouble(0);
+    double nextValue = rowWindow.getRow(2).getDouble(0);
 
     long x1 = currentTime - lastTime;
     long x2 = nextTime - currentTime;
@@ -109,17 +106,13 @@ public class UDTFHiFiCos implements UDTF {
   }
 
   private void transformFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
-    Row lastRow = rowWindow.getRow(0);
-    Row currentRow = rowWindow.getRow(1);
-    Row nextRow = rowWindow.getRow(2);
+    long lastTime = rowWindow.getRow(0).getTime();
+    long currentTime = rowWindow.getRow(1).getTime();
+    long nextTime = rowWindow.getRow(2).getTime();
 
-    long lastTime = lastRow.getTime();
-    long currentTime = currentRow.getTime();
-    long nextTime = nextRow.getTime();
-
-    float lastValue = lastRow.getFloat(0);
-    float currentValue = currentRow.getFloat(0);
-    float nextValue = nextRow.getFloat(0);
+    float lastValue = rowWindow.getRow(0).getFloat(0);
+    float currentValue = rowWindow.getRow(1).getFloat(0);
+    float nextValue = rowWindow.getRow(2).getFloat(0);
 
     long x1 = currentTime - lastTime;
     long x2 = nextTime - currentTime;
@@ -134,17 +127,13 @@ public class UDTFHiFiCos implements UDTF {
   }
 
   private void transformLong(RowWindow rowWindow, PointCollector collector) throws IOException {
-    Row lastRow = rowWindow.getRow(0);
-    Row currentRow = rowWindow.getRow(1);
-    Row nextRow = rowWindow.getRow(2);
+    long lastTime = rowWindow.getRow(0).getTime();
+    long currentTime = rowWindow.getRow(1).getTime();
+    long nextTime = rowWindow.getRow(2).getTime();
 
-    long lastTime = lastRow.getTime();
-    long currentTime = currentRow.getTime();
-    long nextTime = nextRow.getTime();
-
-    long lastValue = lastRow.getLong(0);
-    long currentValue = currentRow.getLong(0);
-    long nextValue = nextRow.getLong(0);
+    long lastValue = rowWindow.getRow(0).getLong(0);
+    long currentValue = rowWindow.getRow(1).getLong(0);
+    long nextValue = rowWindow.getRow(2).getLong(0);
 
     long x1 = currentTime - lastTime;
     long x2 = nextTime - currentTime;
@@ -159,17 +148,13 @@ public class UDTFHiFiCos implements UDTF {
   }
 
   private void transformInt(RowWindow rowWindow, PointCollector collector) throws IOException {
-    Row lastRow = rowWindow.getRow(0);
-    Row currentRow = rowWindow.getRow(1);
-    Row nextRow = rowWindow.getRow(2);
+    long lastTime = rowWindow.getRow(0).getTime();
+    long currentTime = rowWindow.getRow(1).getTime();
+    long nextTime = rowWindow.getRow(2).getTime();
 
-    long lastTime = lastRow.getTime();
-    long currentTime = currentRow.getTime();
-    long nextTime = nextRow.getTime();
-
-    int lastValue = lastRow.getInt(0);
-    int currentValue = currentRow.getInt(0);
-    int nextValue = nextRow.getInt(0);
+    int lastValue = rowWindow.getRow(0).getInt(0);
+    int currentValue = rowWindow.getRow(1).getInt(0);
+    int nextValue = rowWindow.getRow(2).getInt(0);
 
     long x1 = currentTime - lastTime;
     long x2 = nextTime - currentTime;
