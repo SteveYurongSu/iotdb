@@ -749,6 +749,9 @@ public class IoTDBDescriptor {
       // UDF
       loadUDFProps(properties);
 
+      // trigger
+      loadTriggerProps(properties);
+
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -1136,6 +1139,17 @@ public class IoTDBDescriptor {
                 + " should be an integer, which is "
                 + readerTransformerCollectorMemoryProportion);
       }
+    }
+  }
+
+  private void loadTriggerProps(Properties properties) {
+    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
+
+    int tlogBufferSize =
+        Integer.parseInt(
+            properties.getProperty("tlog_buffer_size", Integer.toString(conf.getTlogBufferSize())));
+    if (tlogBufferSize > 0) {
+      conf.setTlogBufferSize(tlogBufferSize);
     }
   }
 
