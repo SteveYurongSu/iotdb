@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -181,6 +182,8 @@ public class Planner {
       case DROP_TRIGGER:
       case START_TRIGGER:
       case STOP_TRIGGER:
+      case SHOW_CONTINUOUS_QUERIES:
+      case DROP_CONTINUOUS_QUERY:
         return operator;
       case QUERY:
       case DELETE:
@@ -189,6 +192,14 @@ public class Planner {
       case QUERY_INDEX:
         SFWOperator root = (SFWOperator) operator;
         return optimizeSFWOperator(root, maxDeduplicatedPathNum);
+      case CREATE_CONTINUOUS_QUERY:
+        CreateContinuousQueryOperator createContinuousQueryOperator =
+            (CreateContinuousQueryOperator) operator;
+        createContinuousQueryOperator.setQueryOperator(
+            (QueryOperator)
+                optimizeSFWOperator(
+                    createContinuousQueryOperator.getQueryOperator(), maxDeduplicatedPathNum));
+        return createContinuousQueryOperator;
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

@@ -94,6 +94,10 @@ public class IoTDBConstant {
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
+  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "continuous query name";
+  public static final String COLUMN_CONTINUOUS_QUERY_CONFIGURATION =
+      "continuous query configuration";
+
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";

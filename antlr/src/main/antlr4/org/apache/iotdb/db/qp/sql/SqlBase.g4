@@ -107,6 +107,31 @@ statement
     fromClause
     whereClause?
     specialClause? #selectStatement
+    | CREATE CONTINUOUS QUERY continuousQueryName=ID
+      resampleClause?
+      BEGIN
+      cqSelectIntoClause
+      END  # createContinuousQueryStatement
+    ;
+
+
+resampleClause
+    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
+
+cqSelectIntoClause
+    : SELECT selectElements
+    INTO (fullPath | suffixPath)
+    fromClause
+    whereClause?
+    cqGroupByTimeClause
+    ;
+
+
+cqGroupByTimeClause
+    : GROUP BY TIME LR_BRACKET
+      DURATION
+      RR_BRACKET
+      (COMMA LEVEL OPERATOR_EQ INT)?
     ;
 
 selectElements
@@ -646,6 +671,11 @@ nodeNameWithoutStar
     | PARTITION
     | DESC
     | ASC
+    | CONTINUOUS
+    | BEGIN
+    | END
+    | RESAMPLE
+    | EVERY
     ;
 
 dataType
@@ -1288,6 +1318,27 @@ TOLERANCE
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+
+CONTINUOUS
+    : C O N T I N U O U S
+    ;
+
+BEGIN
+    : B E G I N
+    ;
+
+END
+    : E N D
+    ;
+
+RESAMPLE
+    : R E S A M P L E
+    ;
+
+EVERY
+    : E V E R Y
     ;
 
 //============================

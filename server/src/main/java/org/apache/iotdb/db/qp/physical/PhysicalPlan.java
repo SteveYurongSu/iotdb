@@ -412,7 +412,10 @@ public abstract class PhysicalPlan {
     BATCH_INSERT_ONE_DEVICE,
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
-    SHOW_DEVICES
+    SHOW_DEVICES,
+    CREATE_CONTINUOUS_QUERY,
+    DROP_CONTINUOUS_QUERY,
+    SHOW_CONTINUOUS_QUERIES
   }
 
   public long getIndex() {
