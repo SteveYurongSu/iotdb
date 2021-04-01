@@ -8,6 +8,7 @@ import java.time.Duration;
 
 public class CreateContinuousQueryOperator extends RootOperator {
 
+  private String sql;
   private QueryOperator queryOperator;
   private String continuousQueryName;
   private PartialPath targetPath;
@@ -18,6 +19,10 @@ public class CreateContinuousQueryOperator extends RootOperator {
     super(tokenIntType);
     operatorType = OperatorType.CREATE_CONTINUOUS_QUERY;
   }
+
+  public void setSql(String sql) { this.sql = sql; }
+
+  public String getSql() { return sql;}
 
   public void setContinuousQueryName(String continuousQueryName) {
     this.continuousQueryName = continuousQueryName;

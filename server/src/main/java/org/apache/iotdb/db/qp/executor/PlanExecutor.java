@@ -881,7 +881,7 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
     List<ShowContinuousQueriesResult> continuousQueriesList =
-        ContinuousQueryService.getInstance().getContinuousQueries();
+        ContinuousQueryService.getInstance().getContinuousQueryPlans();
 
     for (ShowContinuousQueriesResult result : continuousQueriesList) {
       RowRecord record = new RowRecord(0);

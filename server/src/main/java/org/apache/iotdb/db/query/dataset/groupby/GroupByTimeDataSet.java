@@ -51,7 +51,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
 
   public GroupByTimeDataSet(
       QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-          throws QueryProcessException, IOException, IllegalPathException {
+          throws QueryProcessException, IOException {
     this.queryId = context.getQueryId();
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
@@ -83,7 +83,11 @@ public class GroupByTimeDataSet extends QueryDataSet {
     this.dataTypes = new ArrayList<>();
     this.paths = new ArrayList<>();
     for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
+      try {
       this.paths.add(new PartialPath(entry.getKey()));
+      } catch (IllegalPathException e) {
+        e.printStackTrace();
+      }
       this.dataTypes.add(entry.getValue().getResultDataType());
     }
   }

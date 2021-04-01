@@ -10,12 +10,13 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,11 +27,9 @@ public class ContinuousQuery implements Runnable {
   private CreateContinuousQueryPlan plan;
   private List<PartialPath> targetPaths;
 
-  public ContinuousQuery(CreateContinuousQueryPlan plan)
-      throws IllegalPathException, QueryProcessException {
+  public ContinuousQuery(CreateContinuousQueryPlan plan) throws QueryProcessException {
     this.plan = plan;
     this.planExecutor = new PlanExecutor();
-    setTargetPaths(plan.getDeduplicatedPaths());
   }
 
   @Override
@@ -44,14 +43,15 @@ public class ContinuousQuery implements Runnable {
         QueryResourceManager.getInstance()
             .assignQueryId(true, 1024, plan.getDeduplicatedPaths().size());
 
-    // QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-
-    // queryTimeManager.registerQuery(queryId, currentTime, statement, timeout);
-
     long timestamp = Instant.now().toEpochMilli();
 
     plan.setStartTime(timestamp - plan.getForInterval());
     plan.setEndTime(timestamp);
+    try {
+      plan.getGroupByTimePlan().setExpression(null);
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+    }
 
     QueryDataSet result = null;
     try {
@@ -66,91 +66,47 @@ public class ContinuousQuery implements Runnable {
       e.printStackTrace();
     }
 
-    // queryTimeManager.unRegisterQuery(queryId);
-//
-//    int columnSize = result.getPaths().size();
-//
-//    System.out.println("=============" + columnSize + "===============");
-//
-//    InsertTabletPlan[] insertTabletPlans = new InsertTabletPlan[columnSize];
-//
-//    for (int i = 0; i < columnSize; i++) {
-//      try {
-//        List<String> measurements = Arrays.asList(targetPaths.get(i).getMeasurement());
-//        System.out.println(
-//            "===========measurement: " + targetPaths.get(i).getMeasurement() + "===============");
-//        System.out.println(
-//            "===========device: " + targetPaths.get(i).getDevice() + "===============");
-//        insertTabletPlans[i] =
-//            new InsertTabletPlan(
-//                new PartialPath(targetPaths.get(i).getDevice()),
-//                measurements,
-//                result.getDataTypes());
-//      } catch (IllegalPathException e) {
-//        e.printStackTrace();
-//      }
-//    }
-//
-//    while (true) {
-//
-//      ColumnsBatch columnsBatch = result.nextColumnsBatch(1024);
-//
-//      System.out.println("============ row num: " + columnsBatch.getRowNum() + "============");
-//
-//      if (columnsBatch == null) {
-//        break;
-//      }
-//
-//      for (int i = 0; i < columnSize; i++) {
-//        insertTabletPlans[i].setTimes(columnsBatch.getTimestampList());
-//        insertTabletPlans[i].setColumns(columnsBatch.getColumn(i));
-//        insertTabletPlans[i].setRowCount(columnsBatch.getRowNum());
-//        try {
-//          planExecutor.insertTablet(insertTabletPlans[i]);
-//        } catch (QueryProcessException e) {
-//          e.printStackTrace();
-//        }
-//      }
-//    }
+    try {
+      setTargetPaths(result.getPaths());
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
 
     int columnSize = result.getDataTypes().size();
 
     InsertTabletPlan[] insertTabletPlans = new InsertTabletPlan[columnSize];
 
+    String[] measurements = new String[] {targetPaths.get(0).getMeasurement()};
+    List<Integer> dataTypes = Collections.singletonList(result.getDataTypes().get(0).ordinal());
+
     for (int i = 0; i < columnSize; i++) {
-      List<String> measurements = Arrays.asList(targetPaths.get(i).getMeasurement());
       try {
         insertTabletPlans[i] =
             new InsertTabletPlan(
-                new PartialPath(targetPaths.get(i).getDevice()),
-                measurements,
-                result.getDataTypes());
+                new PartialPath(targetPaths.get(i).getDevice()), measurements, dataTypes);
       } catch (IllegalPathException e) {
         e.printStackTrace();
       }
     }
 
-    int fetchSize = 1024;
+    int fetchSize = 100;
 
-    ArrayList<ArrayList<Object>> columnsList = new ArrayList<>(columnSize);
-    for (int i = 0; i < columnSize; i++) {
-      columnsList.add(new ArrayList<>(fetchSize));
-    }
-    ArrayList<Long> timestampList = new ArrayList<>(fetchSize);
+    double[][][] columns = new double[columnSize][1][fetchSize];
+    long[][] timestamps = new long[columnSize][fetchSize];
+    int[] rowNums = new int[columnSize];
 
     try {
 
       while (true) {
-        int insertedRowNum = 0;
-        for (ArrayList<Object> objectArrayList : columnsList) {
-          objectArrayList.clear();
+        int rowNum = 0;
+        for (int i = 0; i < rowNums.length; i++) {
+          rowNums[i] = 0;
         }
-        timestampList.clear();
 
         boolean hasNext = true;
 
         while (true) {
-          if (++insertedRowNum > fetchSize) {
+          if (++rowNum > fetchSize) {
             break;
           }
           if (!result.hasNextWithoutConstraint()) {
@@ -159,25 +115,24 @@ public class ContinuousQuery implements Runnable {
           }
 
           RowRecord r = result.nextWithoutConstraint();
-
           List<Field> fields = r.getFields();
+          long ts = r.getTimestamp();
 
-          Long ts = r.getTimestamp();
-          timestampList.add(ts);
-
-          for (ArrayList<Object> objects : columnsList) {
-            for (Field f : fields) {
-              objects.add(f == null ? null : f.getObjectValue(f.getDataType()));
+          for (int i = 0; i < columnSize; i++) {
+            Field f = fields.get(i);
+            if (f != null) {
+              timestamps[i][rowNums[i]] = ts;
+              columns[i][0][rowNums[i]] = f.getDoubleV();
+              rowNums[i]++;
             }
           }
         }
 
-        if (!timestampList.isEmpty()) {
-
-          for (int i = 0; i < columnSize; i++) {
-            insertTabletPlans[i].setTimes(timestampList.stream().mapToLong(t -> t).toArray());
-            insertTabletPlans[i].setColumns(columnsList.get(i).toArray());
-            insertTabletPlans[i].setRowCount(insertedRowNum);
+        for (int i = 0; i < columnSize; i++) {
+          if (rowNums[i] > 0) {
+            insertTabletPlans[i].setTimes(timestamps[i]);
+            insertTabletPlans[i].setColumns(columns[i]);
+            insertTabletPlans[i].setRowCount(rowNums[i]);
             try {
               planExecutor.insertTablet(insertTabletPlans[i]);
             } catch (QueryProcessException e) {
@@ -195,10 +150,12 @@ public class ContinuousQuery implements Runnable {
     }
   }
 
-  private void setTargetPaths(List<PartialPath> rawPaths) throws IllegalPathException {
+
+
+  private void setTargetPaths(List<Path> rawPaths) throws IllegalPathException {
     this.targetPaths = new ArrayList<>(rawPaths.size());
     for (int i = 0; i < rawPaths.size(); i++) {
-      this.targetPaths.add(new PartialPath(fillTemplate(rawPaths.get(i))));
+      this.targetPaths.add(new PartialPath(fillTemplate((PartialPath) rawPaths.get(i))));
     }
   }
 
@@ -214,4 +171,5 @@ public class ContinuousQuery implements Runnable {
     m.appendTail(sb);
     return sb.toString();
   }
+
 }

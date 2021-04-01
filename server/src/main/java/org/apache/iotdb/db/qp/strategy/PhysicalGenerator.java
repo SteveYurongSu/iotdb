@@ -401,6 +401,7 @@ public class PhysicalGenerator {
             (GroupByTimePlan)
                 transformQuery(createContinuousQueryOperator.getQueryOperator(), fetchSize);
         return new CreateContinuousQueryPlan(
+            createContinuousQueryOperator.getSql(),
             createContinuousQueryOperator.getContinuousQueryName(),
             createContinuousQueryOperator.getTargetPath(),
             createContinuousQueryOperator.getEveryInterval(),

@@ -103,23 +103,6 @@ public class InsertTabletPlan extends InsertPlan {
     this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(
-      PartialPath deviceId, List<String> measurements, List<TSDataType> dataTypes) {
-    super(OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
-    this.measurements = measurements.toArray(new String[0]);
-    this.dataTypes = dataTypes.toArray(new TSDataType[0]);
-    this.canBeSplit = true;
-  }
-
-  //  public InsertTabletPlan(PartialPath deviceId, String[] measurements, List<TSDataType>
-  // dataTypes) {
-  //    super(OperatorType.BATCHINSERT);
-  //    this.deviceId = deviceId;
-  //    this.measurements = measurements;
-  //    this.dataTypes = dataTypes.toArray(new TSDataType[0]);
-  //    this.canBeSplit = true;
-  //  }
 
   public int getStart() {
     return start;

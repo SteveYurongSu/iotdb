@@ -1040,6 +1040,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     CreateContinuousQueryOperator createContinuousQueryOperator =
         new CreateContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_CREATE);
 
+    createContinuousQueryOperator.setSql(ctx.getText());
+
     createContinuousQueryOperator.setContinuousQueryName(ctx.continuousQueryName.getText());
 
     if (ctx.resampleClause() != null) {
