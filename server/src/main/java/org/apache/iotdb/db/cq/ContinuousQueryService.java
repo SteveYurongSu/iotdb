@@ -7,11 +7,12 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;
-import org.apache.iotdb.db.query.udf.service.UDFLogWriter;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -46,7 +47,7 @@ public class ContinuousQueryService implements IService {
 
   private final ReentrantLock registrationLock = new ReentrantLock();
   private final ReentrantReadWriteLock logWriterLock = new ReentrantReadWriteLock();
-  private ContinuousQueryLogWriter logWriter;
+  private MLogWriter logWriter;
 
   private static final ContinuousQueryService INSTANCE = new ContinuousQueryService();
 
@@ -73,8 +74,8 @@ public class ContinuousQueryService implements IService {
   public void start() {
     try {
       makeDirIfNecessary();
+      logWriter = new MLogWriter(CQ_LOG_FILE_NAME);
       doRecovery();
-      logWriter = new ContinuousQueryLogWriter(CQ_LOG_FILE_NAME);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -85,8 +86,7 @@ public class ContinuousQueryService implements IService {
     try {
       writeTemporaryLogFile();
 
-      logWriter.close();
-      logWriter.deleteLogFile();
+      logWriter.clear();
 
       File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(CQ_TEMPORARY_LOG_FILE_NAME);
       File logFile = SystemFileFactory.INSTANCE.getFile(CQ_LOG_FILE_NAME);
@@ -97,10 +97,9 @@ public class ContinuousQueryService implements IService {
   }
 
   private void writeTemporaryLogFile() throws IOException {
-    ContinuousQueryLogWriter temporaryLogFile =
-        new ContinuousQueryLogWriter(CQ_TEMPORARY_LOG_FILE_NAME);
+    MLogWriter temporaryLogFile = new MLogWriter(CQ_TEMPORARY_LOG_FILE_NAME);
     for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
-      temporaryLogFile.register(plan);
+      temporaryLogFile.createContinuousQuery(plan);
     }
     temporaryLogFile.close();
   }
@@ -151,15 +150,14 @@ public class ContinuousQueryService implements IService {
     String cqName = plan.getContinuousQueryName();
     continuousQueriesFutures.get(cqName).cancel(false);
     continuousQueriesFutures.remove(cqName);
-    CreateContinuousQueryPlan originalPlan = continuousQueryPlans.remove(cqName);
-
+    continuousQueryPlans.remove(cqName);
     return true;
   }
 
   private void appendRegistrationLog(CreateContinuousQueryPlan plan) throws IOException {
     logWriterLock.writeLock().lock();
     try {
-      logWriter.register(plan);
+      logWriter.createContinuousQuery(plan);
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
@@ -170,7 +168,7 @@ public class ContinuousQueryService implements IService {
   private void appendDeregistrationLog(DropContinuousQueryPlan plan) throws IOException {
     logWriterLock.writeLock().lock();
     try {
-      logWriter.deregister(plan);
+      logWriter.dropContinuousQuery(plan);
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
@@ -214,25 +212,18 @@ public class ContinuousQueryService implements IService {
   private void recoveryFromLogFile(File logFile) throws IOException {
     HashMap<String, CreateContinuousQueryPlan> recoveredCQs = new HashMap<>();
 
-    try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-//        ByteArrayInputStream bais = new ByteArrayInputStream(line.getBytes());
-//        ObjectInputStream ois = new ObjectInputStream(bais);
+    MLogReader logReader = new MLogReader(logFile);
+    while (logReader.hasNext()) {
 
-        PhysicalPlan plan = PhysicalPlan.Factory.create(ByteBuffer.wrap(line.getBytes()));
+      PhysicalPlan plan = logReader.next();
 
-//        Object plan = ois.readObject();
-        if (plan instanceof CreateContinuousQueryPlan) {
-          recoveredCQs.put(
-              ((CreateContinuousQueryPlan) plan).getContinuousQueryName(),
-              (CreateContinuousQueryPlan) plan);
-        } else if (plan instanceof DropContinuousQueryPlan) {
-          recoveredCQs.remove(((DropContinuousQueryPlan) plan).getContinuousQueryName());
-        }
+      if (plan instanceof CreateContinuousQueryPlan) {
+        recoveredCQs.put(
+            ((CreateContinuousQueryPlan) plan).getContinuousQueryName(),
+            (CreateContinuousQueryPlan) plan);
+      } else if (plan instanceof DropContinuousQueryPlan) {
+        recoveredCQs.remove(((DropContinuousQueryPlan) plan).getContinuousQueryName());
       }
-    } catch ( IllegalPathException e) {
-      e.printStackTrace();
     }
 
     for (Map.Entry<String, CreateContinuousQueryPlan> cq : recoveredCQs.entrySet()) {

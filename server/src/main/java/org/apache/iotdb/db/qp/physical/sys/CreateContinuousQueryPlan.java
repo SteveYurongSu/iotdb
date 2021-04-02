@@ -107,55 +107,55 @@ public class CreateContinuousQueryPlan extends PhysicalPlan implements java.io.S
     return Collections.emptyList();
   }
 
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.CREATE_CONTINUOUS_QUERY.ordinal());
-    ReadWriteIOUtils.write(sql, stream);
-    ReadWriteIOUtils.write(continuousQueryName, stream);
-    ReadWriteIOUtils.write(targetPath.getFullPath(), stream);
-    stream.writeLong(everyInterval);
-    stream.writeLong(forInterval);
-
-    // group by time plan
-    stream.writeLong(groupByTimePlan.getInterval());
-    stream.writeLong(groupByTimePlan.getSlidingStep());
-    stream.writeBoolean(groupByTimePlan.isIntervalByMonth());
-    stream.writeBoolean(groupByTimePlan.isSlidingStepByMonth());
-    stream.writeBoolean(groupByTimePlan.isLeftCRightO());
-
-    List<String> aggregations = groupByTimePlan.getAggregations();
-    stream.writeInt(aggregations.size());
-    for(int i = 0; i < aggregations.size(); i++) {
-      ReadWriteIOUtils.write(aggregations.get(i), stream);
-    }
-
-    List<String> deduplicatedAggrs = groupByTimePlan.getDeduplicatedAggregations();
-    stream.writeInt(deduplicatedAggrs.size());
-    for(int i = 0; i < deduplicatedAggrs.size(); i++) {
-      ReadWriteIOUtils.write(deduplicatedAggrs.get(i), stream);
-    }
-
-    List<PartialPath> deduplicatedPaths = groupByTimePlan.getDeduplicatedPaths();
-    stream.writeInt(deduplicatedPaths.size());
-    for(int i = 0; i < deduplicatedPaths.size(); i++) {
-      ReadWriteIOUtils.write(deduplicatedPaths.get(i).getFullPath(), stream);
-    }
-
-    List<TSDataType> deduplicatedDataTypes = groupByTimePlan.getDeduplicatedDataTypes();
-    stream.writeInt(deduplicatedDataTypes.size());
-    for(int i = 0; i < deduplicatedDataTypes.size(); i++) {
-      ReadWriteIOUtils.write(deduplicatedDataTypes.get(i).ordinal(), stream);
-    }
-
-    Map<String, Integer> pathToIndex = groupByTimePlan.getPathToIndex();
-    stream.writeInt(pathToIndex.size());
-    for (Map.Entry<String, Integer> entry : pathToIndex.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      stream.writeInt(entry.getValue());
-    }
-
-    stream.writeLong(index);
-  }
+//  @Override
+//  public void serialize(DataOutputStream stream) throws IOException {
+//    stream.writeByte((byte) PhysicalPlanType.CREATE_CONTINUOUS_QUERY.ordinal());
+//    ReadWriteIOUtils.write(sql, stream);
+//    ReadWriteIOUtils.write(continuousQueryName, stream);
+//    ReadWriteIOUtils.write(targetPath.getFullPath(), stream);
+//    stream.writeLong(everyInterval);
+//    stream.writeLong(forInterval);
+//
+//    // group by time plan
+//    stream.writeLong(groupByTimePlan.getInterval());
+//    stream.writeLong(groupByTimePlan.getSlidingStep());
+//    stream.writeBoolean(groupByTimePlan.isIntervalByMonth());
+//    stream.writeBoolean(groupByTimePlan.isSlidingStepByMonth());
+//    stream.writeBoolean(groupByTimePlan.isLeftCRightO());
+//
+//    List<String> aggregations = groupByTimePlan.getAggregations();
+//    stream.writeInt(aggregations.size());
+//    for(int i = 0; i < aggregations.size(); i++) {
+//      ReadWriteIOUtils.write(aggregations.get(i), stream);
+//    }
+//
+//    List<String> deduplicatedAggrs = groupByTimePlan.getDeduplicatedAggregations();
+//    stream.writeInt(deduplicatedAggrs.size());
+//    for(int i = 0; i < deduplicatedAggrs.size(); i++) {
+//      ReadWriteIOUtils.write(deduplicatedAggrs.get(i), stream);
+//    }
+//
+//    List<PartialPath> deduplicatedPaths = groupByTimePlan.getDeduplicatedPaths();
+//    stream.writeInt(deduplicatedPaths.size());
+//    for(int i = 0; i < deduplicatedPaths.size(); i++) {
+//      ReadWriteIOUtils.write(deduplicatedPaths.get(i).getFullPath(), stream);
+//    }
+//
+//    List<TSDataType> deduplicatedDataTypes = groupByTimePlan.getDeduplicatedDataTypes();
+//    stream.writeInt(deduplicatedDataTypes.size());
+//    for(int i = 0; i < deduplicatedDataTypes.size(); i++) {
+//      ReadWriteIOUtils.write(deduplicatedDataTypes.get(i).ordinal(), stream);
+//    }
+//
+//    Map<String, Integer> pathToIndex = groupByTimePlan.getPathToIndex();
+//    stream.writeInt(pathToIndex.size());
+//    for (Map.Entry<String, Integer> entry : pathToIndex.entrySet()) {
+//      ReadWriteIOUtils.write(entry.getKey(), stream);
+//      stream.writeInt(entry.getValue());
+//    }
+//
+//    stream.writeLong(index);
+//  }
 
   @Override
   public void serialize(ByteBuffer buffer) {
@@ -194,7 +194,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan implements java.io.S
     List<TSDataType> deduplicatedDataTypes = groupByTimePlan.getDeduplicatedDataTypes();
     buffer.putInt(deduplicatedDataTypes.size());
     for(int i = 0; i < deduplicatedDataTypes.size(); i++) {
-      ReadWriteIOUtils.write(deduplicatedDataTypes.get(i).ordinal(), buffer);
+      ReadWriteIOUtils.write(deduplicatedDataTypes.get(i), buffer);
     }
 
     Map<String, Integer> pathToIndex = groupByTimePlan.getPathToIndex();
