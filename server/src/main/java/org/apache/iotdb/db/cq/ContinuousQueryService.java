@@ -8,6 +8,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;
 import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
 
 import java.io.IOException;
@@ -67,7 +68,7 @@ public class ContinuousQueryService implements IService {
 
     if (writeLog) {
       try {
-        MManager.getInstance().createContinuousQuery(plan);
+        IoTDB.metaManager.createContinuousQuery(plan);
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -97,7 +98,7 @@ public class ContinuousQueryService implements IService {
 
     try {
 
-      MManager.getInstance().dropContinuousQuery(plan);
+      IoTDB.metaManager.dropContinuousQuery(plan);
     } catch (Exception e) {
 
       e.printStackTrace();

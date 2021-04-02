@@ -1035,6 +1035,23 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
+  public Operator visitDropContinuousQueryStatement(
+      SqlBaseParser.DropContinuousQueryStatementContext ctx) {
+    DropContinuousQueryOperator operator =
+        new DropContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_DROP);
+    operator.setContinuousQueryName(ctx.continuousQueryName.getText());
+    return operator;
+  }
+
+  @Override
+  public Operator visitShowContinuousQueriesStatement(
+      SqlBaseParser.ShowContinuousQueriesStatementContext ctx) {
+    ShowContinuousQueriesOperator operator =
+        new ShowContinuousQueriesOperator(SQLConstant.TOK_SHOW_CONTINUOUS_QUERIES);
+    return operator;
+  }
+
+  @Override
   public Operator visitCreateContinuousQueryStatement(
       SqlBaseParser.CreateContinuousQueryStatementContext ctx) {
     CreateContinuousQueryOperator createContinuousQueryOperator =
@@ -1052,18 +1069,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     QueryOperator queryOperator = createContinuousQueryOperator.getQueryOperator();
 
-    if (createContinuousQueryOperator.getEveryInterval() == 0) {
-      createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
-    }
-    if (createContinuousQueryOperator.getForInterval() == 0) {
-      createContinuousQueryOperator.setForInterval(queryOperator.getUnit());
-    }
-
     StringBuilder sb = new StringBuilder();
     sb.append("select ");
     sb.append(ctx.cqSelectIntoClause().selectElements().getText());
     sb.append(" from ");
-    sb.append(ctx.cqSelectIntoClause().fromClause().getText());
+    sb.append(ctx.cqSelectIntoClause().fromClause().getText().substring(4));
     if (ctx.cqSelectIntoClause().whereClause() != null) {
       sb.append(" where ");
       sb.append(ctx.cqSelectIntoClause().whereClause().getText());
@@ -1084,6 +1094,13 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       sb.append(queryOperator.getLevel());
     }
     createContinuousQueryOperator.setQuerySql(sb.toString());
+
+    if (createContinuousQueryOperator.getEveryInterval() == 0) {
+      createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
+    }
+    if (createContinuousQueryOperator.getForInterval() == 0) {
+      createContinuousQueryOperator.setForInterval(queryOperator.getUnit());
+    }
 
     return createContinuousQueryOperator;
   }

@@ -6,6 +6,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -42,8 +43,11 @@ public class ContinuousQuery implements Runnable {
     GroupByTimePlan queryPlan = null;
 
     try {
-      queryPlan =
-          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(), 1024);
+
+      queryPlan = (GroupByTimePlan) planner.parseSQLToPhysicalPlan(plan.getQuerySql());
+
+//      queryPlan =
+//          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(), 1024);
 
       long timestamp = System.currentTimeMillis();
       queryPlan.setStartTime(timestamp - plan.getForInterval());

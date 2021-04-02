@@ -112,6 +112,8 @@ statement
       BEGIN
       cqSelectIntoClause
       END  # createContinuousQueryStatement
+    | DROP CONTINUOUS QUERY continuousQueryName=ID# dropContinuousQueryStatement
+    | SHOW CONTINUOUS QUERIES # showContinuousQueriesStatement
     ;
 
 
@@ -1323,6 +1325,10 @@ EXPLAIN
 
 CONTINUOUS
     : C O N T I N U O U S
+    ;
+
+QUERIES
+    : Q U E R I E S
     ;
 
 BEGIN
