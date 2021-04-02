@@ -1040,7 +1040,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     CreateContinuousQueryOperator createContinuousQueryOperator =
         new CreateContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_CREATE);
 
-    createContinuousQueryOperator.setSql(ctx.getText());
+    createContinuousQueryOperator.setQuerySql(ctx.getText());
 
     createContinuousQueryOperator.setContinuousQueryName(ctx.continuousQueryName.getText());
 
@@ -1050,12 +1050,40 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     parseCqSelectIntoClause(ctx.cqSelectIntoClause(), createContinuousQueryOperator);
 
+    QueryOperator queryOperator = createContinuousQueryOperator.getQueryOperator();
+
     if (createContinuousQueryOperator.getEveryInterval() == 0) {
-      createContinuousQueryOperator.setEveryInterval(createContinuousQueryOperator.getQueryOperator().getUnit());
+      createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
     }
     if (createContinuousQueryOperator.getForInterval() == 0) {
-      createContinuousQueryOperator.setForInterval(createContinuousQueryOperator.getQueryOperator().getUnit());
+      createContinuousQueryOperator.setForInterval(queryOperator.getUnit());
     }
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("select ");
+    sb.append(ctx.cqSelectIntoClause().selectElements().getText());
+    sb.append(" from ");
+    sb.append(ctx.cqSelectIntoClause().fromClause().getText());
+    if (ctx.cqSelectIntoClause().whereClause() != null) {
+      sb.append(" where ");
+      sb.append(ctx.cqSelectIntoClause().whereClause().getText());
+    }
+    sb.append(" group by ([now() - ");
+    String groupByInterval = ctx.cqSelectIntoClause().cqGroupByTimeClause().DURATION().getText();
+    if (createContinuousQueryOperator.getForInterval() == 0) {
+      sb.append(groupByInterval);
+    } else {
+      List<TerminalNode> durations = ctx.resampleClause().DURATION();
+      sb.append(durations.get(durations.size() - 1).getText());
+    }
+    sb.append(", now()), ");
+    sb.append(groupByInterval);
+    sb.append(")");
+    if (queryOperator.isGroupByLevel()) {
+      sb.append(", level = ");
+      sb.append(queryOperator.getLevel());
+    }
+    createContinuousQueryOperator.setQuerySql(sb.toString());
 
     return createContinuousQueryOperator;
   }

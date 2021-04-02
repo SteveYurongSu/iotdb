@@ -434,7 +434,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan) {
-    return ContinuousQueryService.getInstance().register(plan);
+    return ContinuousQueryService.getInstance().register(plan, true);
   }
 
   private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan) {
@@ -877,16 +877,27 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(
                 new PartialPath(COLUMN_CONTINUOUS_QUERY_NAME, false),
-                new PartialPath(COLUMN_CONTINUOUS_QUERY_CONFIGURATION, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_QUERY_SQL, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_TARGET_PATH, false)),
+            Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.INT64,
+                TSDataType.INT64,
+                TSDataType.TEXT,
+                TSDataType.TEXT));
 
     List<ShowContinuousQueriesResult> continuousQueriesList =
         ContinuousQueryService.getInstance().getContinuousQueryPlans();
 
     for (ShowContinuousQueriesResult result : continuousQueriesList) {
       RowRecord record = new RowRecord(0);
-      record.addField(Binary.valueOf(result.getName()), TSDataType.TEXT);
-      record.addField(Binary.valueOf(result.getConfiguration()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(result.getContinuousQueryName()), TSDataType.TEXT);
+      record.addField(result.getEveryInterval(), TSDataType.INT64);
+      record.addField(result.getForInterval(), TSDataType.INT64);
+      record.addField(Binary.valueOf(result.getQuerySql()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(result.getTargetPath().getFullPath()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
 

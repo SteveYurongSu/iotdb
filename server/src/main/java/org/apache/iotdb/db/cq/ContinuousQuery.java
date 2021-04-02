@@ -4,7 +4,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -14,7 +16,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,11 +26,12 @@ public class ContinuousQuery implements Runnable {
 
   private PlanExecutor planExecutor;
   private CreateContinuousQueryPlan plan;
-  private List<PartialPath> targetPaths;
+  private Planner planner;
 
   public ContinuousQuery(CreateContinuousQueryPlan plan) throws QueryProcessException {
     this.plan = plan;
     this.planExecutor = new PlanExecutor();
+    this.planner = new Planner();
   }
 
   @Override
@@ -37,27 +39,33 @@ public class ContinuousQuery implements Runnable {
 
     System.out.println("===============schedule===============");
 
-    // construct context
+    GroupByTimePlan queryPlan = null;
 
-    long queryId =
-        QueryResourceManager.getInstance()
-            .assignQueryId(true, 1024, plan.getDeduplicatedPaths().size());
-
-    long timestamp = Instant.now().toEpochMilli();
-
-    plan.setStartTime(timestamp - plan.getForInterval());
-    plan.setEndTime(timestamp);
     try {
-      plan.getGroupByTimePlan().setExpression(null);
+      queryPlan =
+          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(), 1024);
+
+      long timestamp = System.currentTimeMillis();
+      queryPlan.setStartTime(timestamp - plan.getForInterval());
+      queryPlan.setEndTime(timestamp);
+
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
 
+    long queryId =
+        QueryResourceManager.getInstance()
+            .assignQueryId(true, 1024, queryPlan.getDeduplicatedPaths().size());
+
     QueryDataSet result = null;
     try {
-      result = planExecutor.processQuery(plan.getGroupByTimePlan(), new QueryContext(queryId));
+      result = planExecutor.processQuery(queryPlan, new QueryContext(queryId));
     } catch (Exception e) {
       e.printStackTrace();
+    }
+
+    if (result == null) {
+      return;
     }
 
     try {
@@ -66,8 +74,9 @@ public class ContinuousQuery implements Runnable {
       e.printStackTrace();
     }
 
+    List<PartialPath> targetPaths = null;
     try {
-      setTargetPaths(result.getPaths());
+      targetPaths = getTargetPaths(result.getPaths());
     } catch (IllegalPathException e) {
       e.printStackTrace();
     }
@@ -150,13 +159,12 @@ public class ContinuousQuery implements Runnable {
     }
   }
 
-
-
-  private void setTargetPaths(List<Path> rawPaths) throws IllegalPathException {
-    this.targetPaths = new ArrayList<>(rawPaths.size());
+  private List<PartialPath> getTargetPaths(List<Path> rawPaths) throws IllegalPathException {
+    List<PartialPath> targetPaths = new ArrayList<>(rawPaths.size());
     for (int i = 0; i < rawPaths.size(); i++) {
-      this.targetPaths.add(new PartialPath(fillTemplate((PartialPath) rawPaths.get(i))));
+      targetPaths.add(new PartialPath(fillTemplate((PartialPath) rawPaths.get(i))));
     }
+    return targetPaths;
   }
 
   private String fillTemplate(PartialPath rawPath) {
@@ -171,5 +179,4 @@ public class ContinuousQuery implements Runnable {
     m.appendTail(sb);
     return sb.toString();
   }
-
 }

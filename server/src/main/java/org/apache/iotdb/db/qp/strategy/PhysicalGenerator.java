@@ -116,7 +116,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -383,11 +382,11 @@ public class PhysicalGenerator {
       case CREATE_TRIGGER:
         CreateTriggerOperator createTriggerOperator = (CreateTriggerOperator) operator;
         return new CreateTriggerPlan(
-                createTriggerOperator.getTriggerName(),
-                createTriggerOperator.getEvent(),
-                createTriggerOperator.getFullPath(),
-                createTriggerOperator.getClassName(),
-                createTriggerOperator.getAttributes());
+            createTriggerOperator.getTriggerName(),
+            createTriggerOperator.getEvent(),
+            createTriggerOperator.getFullPath(),
+            createTriggerOperator.getClassName(),
+            createTriggerOperator.getAttributes());
       case DROP_TRIGGER:
         return new DropTriggerPlan(((DropTriggerOperator) operator).getTriggerName());
       case START_TRIGGER:
@@ -397,17 +396,18 @@ public class PhysicalGenerator {
       case CREATE_CONTINUOUS_QUERY:
         CreateContinuousQueryOperator createContinuousQueryOperator =
             (CreateContinuousQueryOperator) operator;
-        GroupByTimePlan groupByTimePlan =
-            (GroupByTimePlan)
-                transformQuery(createContinuousQueryOperator.getQueryOperator(), fetchSize);
         return new CreateContinuousQueryPlan(
-            createContinuousQueryOperator.getSql(),
+            createContinuousQueryOperator.getQuerySql(),
             createContinuousQueryOperator.getContinuousQueryName(),
             createContinuousQueryOperator.getTargetPath(),
             createContinuousQueryOperator.getEveryInterval(),
             createContinuousQueryOperator.getForInterval(),
-            groupByTimePlan);
-
+            createContinuousQueryOperator.getQueryOperator());
+      case DROP_CONTINUOUS_QUERY:
+        return new DropContinuousQueryPlan(
+            ((DropContinuousQueryOperator) operator).getContinuousQueryName());
+      case SHOW_CONTINUOUS_QUERIES:
+        return new ShowContinuousQueriesPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

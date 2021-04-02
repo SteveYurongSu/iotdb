@@ -4,11 +4,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 
-import java.time.Duration;
-
 public class CreateContinuousQueryOperator extends RootOperator {
 
-  private String sql;
+  private String querySql;
   private QueryOperator queryOperator;
   private String continuousQueryName;
   private PartialPath targetPath;
@@ -20,9 +18,13 @@ public class CreateContinuousQueryOperator extends RootOperator {
     operatorType = OperatorType.CREATE_CONTINUOUS_QUERY;
   }
 
-  public void setSql(String sql) { this.sql = sql; }
+  public void setQuerySql(String querySql) {
+    this.querySql = querySql;
+  }
 
-  public String getSql() { return sql;}
+  public String getQuerySql() {
+    return querySql;
+  }
 
   public void setContinuousQueryName(String continuousQueryName) {
     this.continuousQueryName = continuousQueryName;
