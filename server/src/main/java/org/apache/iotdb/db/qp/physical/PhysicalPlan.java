@@ -373,6 +373,10 @@ public abstract class PhysicalPlan {
           plan = new CreateContinuousQueryPlan();
           plan.deserialize(buffer);
           break;
+        case DROP_CONTINUOUS_QUERY:
+          plan = new DropContinuousQueryPlan();
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }

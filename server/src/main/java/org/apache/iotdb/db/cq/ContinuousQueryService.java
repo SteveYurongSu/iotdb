@@ -84,8 +84,10 @@ public class ContinuousQueryService implements IService {
     try {
 
       ContinuousQuery cq = new ContinuousQuery(plan);
-      pool.scheduleAtFixedRate(
-          cq, plan.getEveryInterval(), plan.getEveryInterval(), TimeUnit.MILLISECONDS);
+      ScheduledFuture future =
+          pool.scheduleAtFixedRate(
+              cq, plan.getEveryInterval(), plan.getEveryInterval(), TimeUnit.MILLISECONDS);
+      continuousQueriesFutures.put(plan.getContinuousQueryName(), future);
       continuousQueryPlans.put(plan.getContinuousQueryName(), plan);
     } catch (QueryProcessException e) {
       e.printStackTrace();

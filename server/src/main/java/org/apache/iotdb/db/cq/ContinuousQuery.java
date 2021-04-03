@@ -46,6 +46,8 @@ public class ContinuousQuery implements Runnable {
 
       queryPlan = (GroupByTimePlan) planner.parseSQLToPhysicalPlan(plan.getQuerySql());
 
+      // plan.getQueryOperator().getSelectOperator().getSuffixPaths();
+
 //      queryPlan =
 //          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(), 1024);
 

@@ -1076,7 +1076,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     sb.append(ctx.cqSelectIntoClause().fromClause().getText().substring(4));
     if (ctx.cqSelectIntoClause().whereClause() != null) {
       sb.append(" where ");
-      sb.append(ctx.cqSelectIntoClause().whereClause().getText());
+      sb.append(ctx.cqSelectIntoClause().whereClause().getText().substring(5));
     }
     sb.append(" group by ([now() - ");
     String groupByInterval = ctx.cqSelectIntoClause().cqGroupByTimeClause().DURATION().getText();
@@ -1150,7 +1150,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       List<String> targetNodes = new ArrayList<>();
       for (int i = 0; i <= queryOperator.getLevel(); i++) {
         if (i == 1) {
-          targetNodes.add(nodes[i] + "_cq");
+          targetNodes.add(nodes[i] + "_cq_" + createContinuousQueryOperator.getContinuousQueryName());
         } else {
           if (nodes[i].equals("*")) {
             targetNodes.add("${" + i + "}");

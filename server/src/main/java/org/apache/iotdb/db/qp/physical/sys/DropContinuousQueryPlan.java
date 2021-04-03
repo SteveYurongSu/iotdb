@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -11,8 +12,12 @@ public class DropContinuousQueryPlan extends PhysicalPlan {
 
   private String continuousQueryName;
 
+  public DropContinuousQueryPlan() {
+    super(false, Operator.OperatorType.DROP_CONTINUOUS_QUERY);
+  }
+
   public DropContinuousQueryPlan(String continuousQueryName) {
-    super(false);
+    super(false, Operator.OperatorType.DROP_CONTINUOUS_QUERY);
     this.continuousQueryName = continuousQueryName;
   }
 
