@@ -5,13 +5,14 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -35,6 +36,29 @@ public class ContinuousQuery implements Runnable {
     this.planner = new Planner();
   }
 
+  private static TSDataType getAggrDataType(String aggrFuncName, TSDataType dataType) {
+    if (aggrFuncName == null) {
+      throw new IllegalArgumentException("AggregateFunction Name must not be null");
+    }
+
+    switch (aggrFuncName.toLowerCase()) {
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.COUNT:
+        return TSDataType.INT64;
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.LAST_VALUE:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.MAX_VALUE:
+        return dataType;
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return TSDataType.DOUBLE;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
   @Override
   public void run() {
 
@@ -48,8 +72,9 @@ public class ContinuousQuery implements Runnable {
 
       // plan.getQueryOperator().getSelectOperator().getSuffixPaths();
 
-//      queryPlan =
-//          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(), 1024);
+      //      queryPlan =
+      //          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(),
+      // 1024);
 
       long timestamp = System.currentTimeMillis();
       queryPlan.setStartTime(timestamp - plan.getForInterval());
@@ -92,7 +117,9 @@ public class ContinuousQuery implements Runnable {
     InsertTabletPlan[] insertTabletPlans = new InsertTabletPlan[columnSize];
 
     String[] measurements = new String[] {targetPaths.get(0).getMeasurement()};
-    List<Integer> dataTypes = Collections.singletonList(result.getDataTypes().get(0).ordinal());
+    TSDataType dataType =
+        getAggrDataType(queryPlan.getAggregations().get(0), queryPlan.getDataTypes().get(0));
+    List<Integer> dataTypes = Collections.singletonList(dataType.ordinal());
 
     for (int i = 0; i < columnSize; i++) {
       try {
@@ -104,9 +131,26 @@ public class ContinuousQuery implements Runnable {
       }
     }
 
-    int fetchSize = 100;
+    int fetchSize =
+        (int) Math.min(10, plan.getForInterval() / plan.getQueryOperator().getUnit() + 1);
 
-    double[][][] columns = new double[columnSize][1][fetchSize];
+    Object[][] columns = new Object[columnSize][1];
+    for (int i = 0; i < columnSize; i++) {
+      switch (dataType) {
+        case DOUBLE:
+          columns[i][0] = new double[fetchSize];
+          break;
+        case INT64:
+          columns[i][0] = new long[fetchSize];
+          break;
+        case INT32:
+          columns[i][0] = new int[fetchSize];
+          break;
+        case FLOAT:
+          columns[i][0] = new float[fetchSize];
+          break;
+      }
+    }
     long[][] timestamps = new long[columnSize][fetchSize];
     int[] rowNums = new int[columnSize];
 
@@ -137,7 +181,20 @@ public class ContinuousQuery implements Runnable {
             Field f = fields.get(i);
             if (f != null) {
               timestamps[i][rowNums[i]] = ts;
-              columns[i][0][rowNums[i]] = f.getDoubleV();
+              switch (dataType) {
+                case DOUBLE:
+                  ((double[]) columns[i][0])[rowNums[i]] = f.getDoubleV();
+                  break;
+                case INT64:
+                  ((long[]) columns[i][0])[rowNums[i]] = f.getLongV();
+                  break;
+                case INT32:
+                  ((int[]) columns[i][0])[rowNums[i]] = f.getIntV();
+                  break;
+                case FLOAT:
+                  ((float[]) columns[i][0])[rowNums[i]] = f.getFloatV();
+                  break;
+              }
               rowNums[i]++;
             }
           }

@@ -2,6 +2,8 @@ package org.apache.iotdb.db.cq;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.ShutdownException;
+import org.apache.iotdb.db.exception.metadata.ContinuousQueryAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.ContinuousQueryNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -64,7 +66,12 @@ public class ContinuousQueryService implements IService {
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {}
 
-  public boolean register(CreateContinuousQueryPlan plan, boolean writeLog) {
+  public boolean register(CreateContinuousQueryPlan plan, boolean writeLog)
+      throws ContinuousQueryAlreadyExistException {
+
+    if (continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
+      throw new ContinuousQueryAlreadyExistException(plan.getContinuousQueryName());
+    }
 
     if (writeLog) {
       try {
@@ -96,17 +103,19 @@ public class ContinuousQueryService implements IService {
     }
   }
 
-  public boolean deregister(DropContinuousQueryPlan plan) {
+  public boolean deregister(DropContinuousQueryPlan plan) throws ContinuousQueryNotExistException {
+    if (!continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
+      throw new ContinuousQueryNotExistException(plan.getContinuousQueryName());
+    }
 
     try {
 
       IoTDB.metaManager.dropContinuousQuery(plan);
+      doDeregister(plan);
     } catch (Exception e) {
 
       e.printStackTrace();
     }
-
-    doDeregister(plan);
 
     return true;
   }
