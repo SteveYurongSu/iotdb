@@ -5,7 +5,6 @@ import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.metadata.ContinuousQueryAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.ContinuousQueryNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;

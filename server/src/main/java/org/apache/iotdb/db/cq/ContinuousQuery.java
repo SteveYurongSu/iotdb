@@ -7,6 +7,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -62,23 +65,30 @@ public class ContinuousQuery implements Runnable {
   @Override
   public void run() {
 
-    System.out.println("===============schedule===============");
+    System.out.println("===============schedule " + plan.getContinuousQueryName() + "===============");
 
     GroupByTimePlan queryPlan = null;
 
     try {
 
-      queryPlan = (GroupByTimePlan) planner.parseSQLToPhysicalPlan(plan.getQuerySql());
+      //      queryPlan = (GroupByTimePlan) planner.parseSQLToPhysicalPlan(plan.getQuerySql());
 
-      // plan.getQueryOperator().getSelectOperator().getSuffixPaths();
+      QueryOperator queryOperator = plan.getQueryOperator();
 
-      //      queryPlan =
-      //          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(),
-      // 1024);
+      SelectOperator selectOperatorCopy = queryOperator.getSelectOperator().copy();
+      FilterOperator filterOperatorCopy = null;
+      if (queryOperator.getFilterOperator() != null) {
+        filterOperatorCopy = queryOperator.getFilterOperator().copy();
+      }
 
-//      long timestamp = System.currentTimeMillis();
-//      queryPlan.setStartTime(timestamp - plan.getForInterval());
-//      queryPlan.setEndTime(timestamp);
+      queryPlan = (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(queryOperator, 1024);
+
+      queryOperator.setSelectOperator(selectOperatorCopy);
+      queryOperator.setFilterOperator(filterOperatorCopy);
+
+      long timestamp = System.currentTimeMillis();
+      queryPlan.setStartTime(timestamp - plan.getForInterval());
+      queryPlan.setEndTime(timestamp);
 
     } catch (QueryProcessException e) {
       e.printStackTrace();
