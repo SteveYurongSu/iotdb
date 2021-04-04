@@ -290,7 +290,11 @@ public class MManager {
       QueryOperator queryOperator =
           (QueryOperator) logicalGenerator.generate(plan.getQuerySql(), ZoneId.systemDefault());
       plan.setQueryOperator(queryOperator);
-      ContinuousQueryService.getInstance().register(plan, false);
+      try {
+        ContinuousQueryService.getInstance().register(plan, false);
+      } catch (MetadataException e) {
+        e.printStackTrace();
+      }
     }
     return idx;
   }

@@ -76,9 +76,9 @@ public class ContinuousQuery implements Runnable {
       //          (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(plan.getQueryOperator(),
       // 1024);
 
-      long timestamp = System.currentTimeMillis();
-      queryPlan.setStartTime(timestamp - plan.getForInterval());
-      queryPlan.setEndTime(timestamp);
+//      long timestamp = System.currentTimeMillis();
+//      queryPlan.setStartTime(timestamp - plan.getForInterval());
+//      queryPlan.setEndTime(timestamp);
 
     } catch (QueryProcessException e) {
       e.printStackTrace();

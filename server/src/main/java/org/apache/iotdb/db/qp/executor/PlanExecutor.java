@@ -40,10 +40,7 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -221,7 +218,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+          throws QueryProcessException, StorageEngineException, MetadataException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -433,11 +430,11 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan) {
+  private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan) throws ContinuousQueryAlreadyExistException {
     return ContinuousQueryService.getInstance().register(plan, true);
   }
 
-  private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan) {
+  private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan) throws ContinuousQueryNotExistException {
     return ContinuousQueryService.getInstance().deregister(plan);
   }
 
