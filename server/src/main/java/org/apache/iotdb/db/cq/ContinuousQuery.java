@@ -94,6 +94,10 @@ public class ContinuousQuery implements Runnable {
       e.printStackTrace();
     }
 
+    if (queryPlan == null) {
+      return;
+    }
+
     long queryId =
         QueryResourceManager.getInstance()
             .assignQueryId(true, 1024, queryPlan.getDeduplicatedPaths().size());
