@@ -1099,7 +1099,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
     }
     if (createContinuousQueryOperator.getForInterval() == 0) {
-      createContinuousQueryOperator.setForInterval(queryOperator.getUnit());
+      createContinuousQueryOperator.setForInterval(
+          createContinuousQueryOperator.getEveryInterval());
     }
 
     return createContinuousQueryOperator;
@@ -1150,7 +1151,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       List<String> targetNodes = new ArrayList<>();
       for (int i = 0; i <= queryOperator.getLevel(); i++) {
         if (i == 1) {
-          targetNodes.add(nodes[i] + "_cq_" + createContinuousQueryOperator.getContinuousQueryName());
+          targetNodes.add(
+              nodes[i] + "_cq_" + createContinuousQueryOperator.getContinuousQueryName());
         } else {
           if (nodes[i].equals("*")) {
             targetNodes.add("${" + i + "}");

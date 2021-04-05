@@ -119,18 +119,18 @@ public final class SelectOperator extends Operator {
     SelectOperator ret = new SelectOperator(this.tokenIntType, this.zoneId);
 
     try {
-    for (PartialPath path : this.suffixList) {
-      ret.suffixList.add(new PartialPath(path.getFullPath()));
-    }
+      for (PartialPath path : this.suffixList) {
+        ret.suffixList.add(new PartialPath(path.getFullPath()));
+      }
     } catch (IllegalPathException e) {
       e.printStackTrace();
     }
 
-    for(String aggr : this.aggregations) {
+    for (String aggr : this.aggregations) {
       ret.aggregations.add(aggr);
     }
 
-    for(UDFContext ctx : this.udfList) {
+    for (UDFContext ctx : this.udfList) {
       if (ctx != null) {
         ret.udfList.add(ctx.copy());
       } else {

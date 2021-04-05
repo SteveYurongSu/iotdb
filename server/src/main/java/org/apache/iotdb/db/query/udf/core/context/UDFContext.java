@@ -145,7 +145,7 @@ public class UDFContext {
 
     UDFContext ret = new UDFContext(this.name);
 
-    for(Map.Entry<String, String> attribute : attributes.entrySet()) {
+    for (Map.Entry<String, String> attribute : attributes.entrySet()) {
       ret.attributes.put(attribute.getKey(), attribute.getValue());
     }
 
@@ -157,7 +157,7 @@ public class UDFContext {
       e.printStackTrace();
     }
 
-    for ( TSDataType type: dataTypes) {
+    for (TSDataType type : dataTypes) {
       ret.dataTypes.add(type);
     }
 

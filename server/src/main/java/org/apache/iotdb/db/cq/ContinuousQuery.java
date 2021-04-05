@@ -65,13 +65,12 @@ public class ContinuousQuery implements Runnable {
   @Override
   public void run() {
 
-    System.out.println("===============schedule " + plan.getContinuousQueryName() + "===============");
+    System.out.println(
+        "===============schedule " + plan.getContinuousQueryName() + "===============");
 
     GroupByTimePlan queryPlan = null;
 
     try {
-
-      //      queryPlan = (GroupByTimePlan) planner.parseSQLToPhysicalPlan(plan.getQuerySql());
 
       QueryOperator queryOperator = plan.getQueryOperator();
 
