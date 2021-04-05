@@ -1177,22 +1177,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     queryOperator.setUnit(parseDuration(ctx.DURATION().getText()));
     queryOperator.setSlidingStep(queryOperator.getUnit());
 
-    if (ctx.INT() != null) {
+    if (ctx.LEVEL() != null && ctx.INT() != null) {
       queryOperator.setGroupByLevel(true);
       queryOperator.setLevel(Integer.parseInt(ctx.INT().getText()));
-    } else {
-      PartialPath fromPath = queryOperator.getFromOperator().getPrefixPaths().get(0);
-      String[] nodes = fromPath.getNodes();
-
-      int level = 0;
-      while (level < nodes.length && nodes[level] != "*") {
-        level++;
-      }
-      if (level < nodes.length) {
-        queryOperator.setGroupByLevel(true);
-      }
-
-      queryOperator.setLevel(level - 1);
     }
   }
 
