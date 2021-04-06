@@ -68,6 +68,22 @@ public class ContinuousQuery implements Runnable {
     System.out.println(
         "===============schedule " + plan.getContinuousQueryName() + "===============");
 
+    GroupByTimePlan queryPlan = getQueryPlan();
+
+    if (queryPlan == null) {
+      return;
+    }
+
+    QueryDataSet result = doQuery(queryPlan);
+
+    if (result == null) {
+      return;
+    }
+
+    doInsert(result, queryPlan);
+  }
+
+  private GroupByTimePlan getQueryPlan() {
     GroupByTimePlan queryPlan = null;
 
     try {
@@ -93,10 +109,10 @@ public class ContinuousQuery implements Runnable {
       e.printStackTrace();
     }
 
-    if (queryPlan == null) {
-      return;
-    }
+    return queryPlan;
+  }
 
+  private QueryDataSet doQuery(GroupByTimePlan queryPlan) {
     long queryId =
         QueryResourceManager.getInstance()
             .assignQueryId(true, 1024, queryPlan.getDeduplicatedPaths().size());
@@ -108,66 +124,58 @@ public class ContinuousQuery implements Runnable {
       e.printStackTrace();
     }
 
-    if (result == null) {
-      return;
-    }
-
     try {
       QueryResourceManager.getInstance().endQuery(queryId);
     } catch (StorageEngineException e) {
       e.printStackTrace();
     }
 
-    List<PartialPath> targetPaths = null;
+    return result;
+  }
+
+  private void doInsert(QueryDataSet result, GroupByTimePlan queryPlan) {
+
     try {
-      targetPaths = getTargetPaths(result.getPaths());
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
+      List<PartialPath> targetPaths = getTargetPaths(result.getPaths());
 
-    int columnSize = result.getDataTypes().size();
+      int columnSize = result.getDataTypes().size();
 
-    InsertTabletPlan[] insertTabletPlans = new InsertTabletPlan[columnSize];
+      InsertTabletPlan[] insertTabletPlans = new InsertTabletPlan[columnSize];
 
-    String[] measurements = new String[] {targetPaths.get(0).getMeasurement()};
-    TSDataType dataType =
-        getAggrDataType(queryPlan.getAggregations().get(0), queryPlan.getDataTypes().get(0));
-    List<Integer> dataTypes = Collections.singletonList(dataType.ordinal());
+      String[] measurements = new String[] {targetPaths.get(0).getMeasurement()};
+      TSDataType dataType =
+          getAggrDataType(queryPlan.getAggregations().get(0), queryPlan.getDataTypes().get(0));
+      List<Integer> dataTypes = Collections.singletonList(dataType.ordinal());
 
-    for (int i = 0; i < columnSize; i++) {
-      try {
+      for (int i = 0; i < columnSize; i++) {
         insertTabletPlans[i] =
             new InsertTabletPlan(
                 new PartialPath(targetPaths.get(i).getDevice()), measurements, dataTypes);
-      } catch (IllegalPathException e) {
-        e.printStackTrace();
       }
-    }
 
-    int fetchSize =
-        (int) Math.min(10, plan.getForInterval() / plan.getQueryOperator().getUnit() + 1);
+      int fetchSize =
+          (int) Math.min(10, plan.getForInterval() / plan.getQueryOperator().getUnit() + 1);
 
-    Object[][] columns = new Object[columnSize][1];
-    for (int i = 0; i < columnSize; i++) {
-      switch (dataType) {
-        case DOUBLE:
-          columns[i][0] = new double[fetchSize];
-          break;
-        case INT64:
-          columns[i][0] = new long[fetchSize];
-          break;
-        case INT32:
-          columns[i][0] = new int[fetchSize];
-          break;
-        case FLOAT:
-          columns[i][0] = new float[fetchSize];
-          break;
+      Object[][] columns = new Object[columnSize][1];
+      for (int i = 0; i < columnSize; i++) {
+        switch (dataType) {
+          case DOUBLE:
+            columns[i][0] = new double[fetchSize];
+            break;
+          case INT64:
+            columns[i][0] = new long[fetchSize];
+            break;
+          case INT32:
+            columns[i][0] = new int[fetchSize];
+            break;
+          case FLOAT:
+            columns[i][0] = new float[fetchSize];
+            break;
+        }
       }
-    }
-    long[][] timestamps = new long[columnSize][fetchSize];
-    int[] rowNums = new int[columnSize];
 
-    try {
+      long[][] timestamps = new long[columnSize][fetchSize];
+      int[] rowNums = new int[columnSize];
 
       while (true) {
         int rowNum = 0;
@@ -218,11 +226,7 @@ public class ContinuousQuery implements Runnable {
             insertTabletPlans[i].setTimes(timestamps[i]);
             insertTabletPlans[i].setColumns(columns[i]);
             insertTabletPlans[i].setRowCount(rowNums[i]);
-            try {
-              planExecutor.insertTablet(insertTabletPlans[i]);
-            } catch (QueryProcessException e) {
-              e.printStackTrace();
-            }
+            planExecutor.insertTablet(insertTabletPlans[i]);
           }
         }
 
