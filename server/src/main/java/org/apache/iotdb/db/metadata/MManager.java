@@ -24,6 +24,7 @@ import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -515,7 +516,7 @@ public class MManager {
       throws MetadataException, IOException {
     DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan();
     try {
-      PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+      PartialPath emptyStorageGroup = deleteOneTimeseriesUpdateStatisticsAndDropTrigger(p);
       if (!isRecovering) {
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
@@ -576,7 +577,7 @@ public class MManager {
    * @param path full path from root to leaf node
    * @return after delete if the storage group is empty, return its path, otherwise return null
    */
-  private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
+  private PartialPath deleteOneTimeseriesUpdateStatisticsAndDropTrigger(PartialPath path)
       throws MetadataException, IOException {
     Pair<PartialPath, MeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
@@ -585,6 +586,9 @@ public class MManager {
 
     // update statistics in schemaDataTypeNumMap
     updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
+
+    // drop trigger with no exceptions
+    TriggerEngine.drop(pair.right);
 
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
@@ -640,6 +644,9 @@ public class MManager {
           // update statistics in schemaDataTypeNumMap
           updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
+
+        // drop triggers with no exceptions
+        TriggerEngine.drop(leafMNodes);
 
         if (!config.isEnableMemControl()) {
           MemTableManager.getInstance().addOrDeleteStorageGroup(-1);

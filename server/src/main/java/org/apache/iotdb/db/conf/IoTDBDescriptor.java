@@ -646,6 +646,15 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
 
+      conf.setConcurrentWindowEvaluationThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_window_evaluation_thread",
+                  Integer.toString(conf.getConcurrentWindowEvaluationThread()))));
+      if (conf.getConcurrentWindowEvaluationThread() <= 0) {
+        conf.setConcurrentWindowEvaluationThread(Runtime.getRuntime().availableProcessors());
+      }
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
@@ -745,6 +754,9 @@ public class IoTDBDescriptor {
 
       // UDF
       loadUDFProps(properties);
+
+      // trigger
+      loadTriggerProps(properties);
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
@@ -1130,6 +1142,17 @@ public class IoTDBDescriptor {
                 + " should be an integer, which is "
                 + readerTransformerCollectorMemoryProportion);
       }
+    }
+  }
+
+  private void loadTriggerProps(Properties properties) {
+    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
+
+    int tlogBufferSize =
+        Integer.parseInt(
+            properties.getProperty("tlog_buffer_size", Integer.toString(conf.getTlogBufferSize())));
+    if (tlogBufferSize > 0) {
+      conf.setTlogBufferSize(tlogBufferSize);
     }
   }
 

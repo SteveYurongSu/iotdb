@@ -17,19 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.api;
+package org.apache.iotdb.db.sink.ts;
 
-public enum TriggerEvent {
-  BEFORE_INSERT((byte) 0),
-  AFTER_INSERT((byte) 1);
+import org.apache.iotdb.db.sink.api.Event;
 
-  private final byte id;
+public class TimeSeriesEvent implements Event {
 
-  TriggerEvent(byte id) {
-    this.id = id;
+  private final long timestamp;
+  private final Object[] values;
+
+  public TimeSeriesEvent(long timestamp, Object... values) {
+    this.timestamp = timestamp;
+    this.values = values;
   }
 
-  public byte getId() {
-    return id;
+  public long getTimestamp() {
+    return timestamp;
+  }
+
+  public Object[] getValues() {
+    return values;
   }
 }
