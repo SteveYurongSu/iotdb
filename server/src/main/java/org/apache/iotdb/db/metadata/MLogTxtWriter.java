@@ -19,10 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -124,6 +121,34 @@ public class MLogTxtWriter implements AutoCloseable {
     String outputStr = MetadataOperationType.DELETE_TIMESERIES + "," + path + LINE_SEPARATOR;
     ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
     channel.write(buff);
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder();
+    buf.append(
+            String.format(
+                    "%s,%s,%s,%s",
+                    MetadataOperationType.CREATE_CONTINUOUS_QUERY,
+                    plan.getContinuousQueryName(),
+                    plan.getQuerySql(),
+                    plan.getTargetPath().getFullPath()));
+
+    buf.append(LINE_SEPARATOR);
+    channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
+    lineNumber.incrementAndGet();
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder();
+    buf.append(
+            String.format(
+                    "%s,%s",
+                    MetadataOperationType.DROP_CONTINUOUS_QUERY,
+                    plan.getContinuousQueryName()));
+
+    buf.append(LINE_SEPARATOR);
+    channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
+    lineNumber.incrementAndGet();
   }
 
   public void setStorageGroup(String storageGroup) throws IOException {

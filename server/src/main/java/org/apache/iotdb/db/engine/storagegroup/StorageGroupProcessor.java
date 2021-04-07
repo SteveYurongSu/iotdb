@@ -1256,7 +1256,7 @@ public class StorageGroupProcessor {
   }
 
   private String getNewTsFileName(long time, long version, int mergeCnt) {
-    return time + FILE_NAME_SEPARATOR + version + FILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
+    return TsFileResource.getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
   public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
@@ -1616,7 +1616,7 @@ public class StorageGroupProcessor {
       boolean isSeq)
       throws MetadataException {
 
-    if (config.isDebugOn()) {
+    if (context.isDebug()) {
       DEBUG_LOGGER.info(
           "Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}",
           deviceId.getFullPath(),
@@ -1635,7 +1635,8 @@ public class StorageGroupProcessor {
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId.getFullPath(), timeFilter, isSeq, dataTTL)) {
+      if (!tsFileResource.isSatisfied(
+          deviceId.getFullPath(), timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1647,7 +1648,8 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId.getFullPath(), timeFilter, isSeq, dataTTL)) {
+      if (!tsFileResource.isSatisfied(
+          deviceId.getFullPath(), timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1797,6 +1799,11 @@ public class StorageGroupProcessor {
       tsFileResource.getModFile().write(deletion);
       // remember to close mod file
       tsFileResource.getModFile().close();
+      logger.info(
+          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file.",
+          deletion.getPath(),
+          deletion.getStartTime(),
+          deletion.getEndTime());
 
       tsFileResource.updatePlanIndexes(planIndex);
 
@@ -1828,6 +1835,9 @@ public class StorageGroupProcessor {
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
             ((MeasurementMNode) measurementNode).resetCache();
+            logger.info(
+                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
+                measurementNode.getFullPath());
           }
         }
       }
@@ -1882,7 +1892,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * update latest flush time for partition id </>
+   * update latest flush time for partition id
    *
    * @param partitionId partition id
    * @param latestFlushTime lastest flush time
@@ -2158,6 +2168,9 @@ public class StorageGroupProcessor {
       for (MNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null) {
           ((MeasurementMNode) measurementNode).resetCache();
+          logger.info(
+              "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
+              measurementNode.getFullPath());
         }
       }
     } catch (MetadataException e) {
@@ -2483,7 +2496,8 @@ public class StorageGroupProcessor {
       return tsfileName;
     }
 
-    return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion, 0);
+    return TsFileResource.getNewTsFileName(
+        preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion, 0, 0);
   }
 
   /**

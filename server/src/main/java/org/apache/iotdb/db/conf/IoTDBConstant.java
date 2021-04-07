@@ -94,6 +94,12 @@ public class IoTDBConstant {
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
+  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
+  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
+  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
+
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
@@ -147,4 +153,12 @@ public class IoTDBConstant {
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
+
+  // change tsFile name
+  public static final int FILE_NAME_SUFFIX_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_VERSION_INDEX = 1;
+  public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
+  public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
+  public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 }

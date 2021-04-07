@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -79,6 +80,8 @@ public abstract class PhysicalPlan {
   // a bridge from a cluster raft log to a physical plan
   protected long index;
 
+  private boolean debug;
+
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
     return canBeSplit;
@@ -119,6 +122,14 @@ public abstract class PhysicalPlan {
 
   public void setQuery(boolean query) {
     isQuery = query;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 
   /**
@@ -325,6 +336,13 @@ public abstract class PhysicalPlan {
           break;
         case BATCH_INSERT_ROWS:
           plan = new InsertRowsPlan();
+          plan.deserialize(buffer);
+          break;
+        case CREATE_CONTINUOUS_QUERY:
+          plan = new CreateContinuousQueryPlan();
+          break;
+        case DROP_CONTINUOUS_QUERY:
+          plan = new DropContinuousQueryPlan();
           break;
         case CREATE_TRIGGER:
           plan = new CreateTriggerPlan();
@@ -387,7 +405,10 @@ public abstract class PhysicalPlan {
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
-    STOP_TRIGGER
+    STOP_TRIGGER,
+    CREATE_CONTINUOUS_QUERY,
+    DROP_CONTINUOUS_QUERY,
+    SHOW_CONTINUOUS_QUERIES
   }
 
   public long getIndex() {

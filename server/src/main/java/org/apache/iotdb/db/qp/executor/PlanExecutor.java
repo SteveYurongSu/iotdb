@@ -27,6 +27,7 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -42,10 +43,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -75,6 +73,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
@@ -108,11 +107,7 @@ import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager.QueryInfo;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
-import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
+import org.apache.iotdb.db.query.dataset.*;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
@@ -153,6 +148,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
@@ -217,7 +213,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+          throws QueryProcessException, StorageEngineException, MetadataException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -330,6 +326,10 @@ public class PlanExecutor implements IPlanExecutor {
           throw new QueryProcessException(e.getMessage());
         }
         return true;
+      case CREATE_CONTINUOUS_QUERY:
+        return operateCreateContinuousQuery((CreateContinuousQueryPlan) plan);
+      case DROP_CONTINUOUS_QUERY:
+        return operateDropContinuousQuery((DropContinuousQueryPlan) plan);
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -429,6 +429,14 @@ public class PlanExecutor implements IPlanExecutor {
         throw new StorageGroupNotSetException(sb.subSequence(0, sb.length() - 1).toString(), true);
       }
     }
+  }
+
+  private boolean operateCreateContinuousQuery(CreateContinuousQueryPlan plan) throws ContinuousQueryAlreadyExistException {
+    return ContinuousQueryService.getInstance().register(plan, true);
+  }
+
+  private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan) throws ContinuousQueryNotExistException {
+    return ContinuousQueryService.getInstance().deregister(plan);
   }
 
   public static void flushSpecifiedStorageGroups(FlushPlan plan)
@@ -540,6 +548,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowFunctions((ShowFunctionsPlan) showPlan);
       case TRIGGERS:
         return processShowTriggers();
+      case CONTINUOUS_QUERY:
+        return processShowContinuousQueries((ShowContinuousQueriesPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -858,6 +868,38 @@ public class PlanExecutor implements IPlanExecutor {
       rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
     }
+  }
+
+  private QueryDataSet processShowContinuousQueries(ShowContinuousQueriesPlan plan) {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Arrays.asList(
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_NAME, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_QUERY_SQL, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_TARGET_PATH, false)),
+            Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.INT64,
+                TSDataType.INT64,
+                TSDataType.TEXT,
+                TSDataType.TEXT));
+
+    List<ShowContinuousQueriesResult> continuousQueriesList =
+        ContinuousQueryService.getInstance().getContinuousQueryPlans();
+
+    for (ShowContinuousQueriesResult result : continuousQueriesList) {
+      RowRecord record = new RowRecord(0);
+      record.addField(Binary.valueOf(result.getContinuousQueryName()), TSDataType.TEXT);
+      record.addField(result.getEveryInterval(), TSDataType.INT64);
+      record.addField(result.getForInterval(), TSDataType.INT64);
+      record.addField(Binary.valueOf(result.getQuerySql()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(result.getTargetPath().getFullPath()), TSDataType.TEXT);
+      listDataSet.putRecord(record);
+    }
+
+    return listDataSet;
   }
 
   private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
