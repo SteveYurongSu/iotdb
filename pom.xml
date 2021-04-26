@@ -118,7 +118,7 @@
         <joda.version>2.9.9</joda.version>
         <spark.version>2.4.3</spark.version>
         <flink.version>1.11.1</flink.version>
-        <common.io.version>2.5</common.io.version>
+        <common.io.version>2.7</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
         <thrift.version>0.13.0</thrift.version>
