@@ -125,6 +125,18 @@ public class MergeTask implements Callable<Void> {
         new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
   }
 
+  private void print(Set<PartialPath> devices) throws MetadataException {
+    for (PartialPath device : devices) {
+      logger.error("");
+      logger.error("++++ device: " + device);
+      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
+      for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
+        PartialPath path = device.concatNode(entry.getKey());
+        logger.error("path: " + path.getFullPath());
+      }
+    }
+  }
+
   private void doMerge() throws IOException, MetadataException {
     if (resource.getSeqFiles().isEmpty()) {
       logger.info("{} no sequence file to merge into, so will abort task.", taskName);
@@ -152,7 +164,32 @@ public class MergeTask implements Callable<Void> {
       MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         PartialPath path = device.concatNode(entry.getKey());
-        measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
+        try {
+          measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
+        } catch (Exception e) {
+          logger.error("+++++++++++++++++++++++++++++++++");
+          logger.error("sg name: " + storageGroupName);
+          logger.error("device: " + device.getFullPath());
+          logger.error("path: " + path.getFullPath());
+          logger.error("entry.key: " + entry.getKey());
+
+          logger.error("entry.children: ");
+          for (Entry<String, MNode> c : entry.getValue().getChildren().entrySet()) {
+            logger.error(c.getKey());
+            logger.error(c.getValue().getFullPath());
+          }
+
+          logger.error("entry.value: " + entry.getValue().getFullPath());
+
+          logger.error("entry.value.parent: " + entry.getValue().getParent().getFullPath());
+
+          logger.error("+++++++++++++++++++++++++++++++++");
+          logger.error("");
+
+          print(devices);
+
+          throw e;
+        }
         unmergedSeries.add(path);
       }
     }
