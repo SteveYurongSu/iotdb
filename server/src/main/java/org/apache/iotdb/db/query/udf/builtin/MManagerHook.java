@@ -72,9 +72,11 @@ public class MManagerHook implements UDTF {
   }
 }
 
-// select h(ACCtl_tiMnSwtDel_mp, 'p'='root.ivc_pems_0') from
+//
+// select h(ACCtl_tiMnSwtDel_mp, 'p'='root.ivc_pems_0-1') from
 // root.ivc_pdc_0.73d0764e1e14b3349977072bc0a59f15
-// select h(ACCtl_tiMnSwtDel_mp, 'p'='root.ivc_iov_0') from
+// select h(ACCtl_tiMnSwtDel_mp, 'p'='root.ivc_iov_0-1') from
 // root.ivc_pdc_0.73d0764e1e14b3349977072bc0a59f15
-// select h(ACCtl_tiMnSwtDel_mp, 'p'='root.ivc_pdc_0') from
+// select h(ACCtl_tiMnSwtDel_mp, 'p'='root.ivc_pdc_0-1') from
 // root.ivc_pdc_0.73d0764e1e14b3349977072bc0a59f15
+//
