@@ -76,6 +76,7 @@ statement
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | SHOW LOCK INFO prefixPath? #showLockInfo
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW CHILD NODES prefixPath? #showChildNodes
     | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
@@ -103,30 +104,44 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | selectClause fromClause whereClause? specialClause? #selectStatement
+    | selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
+    | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
+      resampleClause?
+      cqSelectIntoClause #createContinuousQueryStatement
+    | DROP (CONTINUOUS QUERY | CQ) continuousQueryName=ID #dropContinuousQueryStatement
+    | SHOW (CONTINUOUS QUERIES | CQS) #showContinuousQueriesStatement
     ;
 
 selectClause
-   : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
-   ;
+    : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
+    ;
 
 resultColumn
-   : expression (AS ID)?
-   ;
+    : expression (AS ID)?
+    ;
 
 expression
-   : LR_BRACKET unary=expression RR_BRACKET
-   | (PLUS | MINUS) unary=expression
-   | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
-   | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-   | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-   | suffixPath
-   | literal=SINGLE_QUOTE_STRING_LITERAL
-   ;
+    : LR_BRACKET unary=expression RR_BRACKET
+    | (PLUS | MINUS) unary=expression
+    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | suffixPath
+    | literal=SINGLE_QUOTE_STRING_LITERAL
+    ;
 
 functionAttribute
-   : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
-   ;
+    : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
+    ;
+
+intoClause
+    : INTO intoPath (COMMA intoPath)*
+    ;
+
+intoPath
+    : fullPath
+    | nodeNameWithoutStar (DOT nodeNameWithoutStar)*
+    ;
 
 alias
     : LR_BRACKET ID RR_BRACKET
@@ -328,6 +343,20 @@ sequenceClause
     : LR_BRACKET constant (COMMA constant)* RR_BRACKET
     ;
 
+resampleClause
+    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
+
+cqSelectIntoClause
+    : BEGIN selectClause INTO intoPath fromClause cqGroupByTimeClause END
+    ;
+
+cqGroupByTimeClause
+    : GROUP BY TIME LR_BRACKET
+      DURATION
+      RR_BRACKET
+      (COMMA LEVEL OPERATOR_EQ INT)?
+    ;
+
 comparisonOperator
     : type = OPERATOR_GT
     | type = OPERATOR_GTE
@@ -338,7 +367,7 @@ comparisonOperator
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA measurementName)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? measurementName)+ RR_BRACKET
     ;
 measurementName
     : nodeNameWithoutStar
@@ -352,6 +381,7 @@ insertValuesSpec
 insertMultiValue
     : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
+    | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
 
 measurementValue
@@ -542,7 +572,6 @@ nodeNameWithoutStar
     | PREVIOUSUNTILLAST
     | METADATA
     | TIMESERIES
-    | TIMESTAMP
     | PROPERTY
     | WITH
     | DATATYPE
@@ -589,7 +618,6 @@ nodeNameWithoutStar
     | DISABLE
     | ALIGN
     | COMPRESSION
-    | TIME
     | ATTRIBUTES
     | TAGS
     | RENAME
@@ -607,6 +635,13 @@ nodeNameWithoutStar
     | PARTITION
     | DESC
     | ASC
+    | CONTINUOUS
+    | CQ
+    | CQS
+    | BEGIN
+    | END
+    | RESAMPLE
+    | EVERY
     ;
 
 dataType
@@ -1219,6 +1254,38 @@ EXPLAIN
     : E X P L A I N
     ;
 
+CONTINUOUS
+    : C O N T I N U O U S
+    ;
+
+QUERIES
+    : Q U E R I E S
+    ;
+
+CQ
+    : C Q
+    ;
+
+CQS
+    : C Q S
+    ;
+
+BEGIN
+    : B E G I N
+    ;
+
+END
+    : E N D
+    ;
+
+RESAMPLE
+    : R E S A M P L E
+    ;
+
+EVERY
+    : E V E R Y
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -1233,6 +1300,10 @@ WITHOUT
 
 ANY
     : A N Y
+    ;
+
+LOCK
+    : L O C K
     ;
 
 //============================
@@ -1341,6 +1412,8 @@ NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 
@@ -1357,6 +1430,8 @@ FIRST_NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 

@@ -26,7 +26,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -39,9 +42,6 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import java.time.ZoneId;
-
-import static org.apache.iotdb.db.qp.logical.Operator.OperatorType.QUERY;
-import static org.apache.iotdb.db.qp.logical.Operator.OperatorType.QUERY_INDEX;
 
 /** provide a integration method for other user. */
 public class Planner {
@@ -63,6 +63,15 @@ public class Planner {
     return new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
   }
 
+  public GroupByTimePlan cqQueryOperatorToGroupByTimePlan(QueryOperator operator, int fetchSize)
+      throws QueryProcessException {
+    // optimize the logical operator (no need to check since the operator has been checked
+    // beforehand)
+    operator = (QueryOperator) logicalOptimize(operator, fetchSize);
+    return (GroupByTimePlan) new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
+  }
+
+  /** convert raw data query to physical plan directly */
   public PhysicalPlan rawDataQueryReqToPhysicalPlan(
       TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException, QueryProcessException {
@@ -99,9 +108,15 @@ public class Planner {
    */
   protected Operator logicalOptimize(Operator operator, int fetchSize)
       throws LogicalOperatorException, PathNumOverLimitException {
-    return operator.getType().equals(QUERY) || operator.getType().equals(QUERY_INDEX)
-        ? optimizeQueryOperator((QueryOperator) operator, fetchSize)
-        : operator;
+    switch (operator.getType()) {
+      case QUERY:
+      case QUERY_INDEX:
+        return optimizeQueryOperator((QueryOperator) operator, fetchSize);
+      case SELECT_INTO:
+        return optimizeSelectIntoOperator((SelectIntoOperator) operator, fetchSize);
+      default:
+        return operator;
+    }
   }
 
   /**
@@ -115,16 +130,23 @@ public class Planner {
       throws LogicalOperatorException, PathNumOverLimitException {
     root = (QueryOperator) new ConcatPathOptimizer().transform(root, fetchSize);
 
-    FilterOperator filter = root.getFilterOperator();
-    if (filter == null) {
+    WhereComponent whereComponent = root.getWhereComponent();
+    if (whereComponent == null) {
       return root;
     }
+    FilterOperator filter = whereComponent.getFilterOperator();
     filter = new RemoveNotOptimizer().optimize(filter);
     filter = new DnfFilterOptimizer().optimize(filter);
     filter = new MergeSingleFilterOptimizer().optimize(filter);
-    root.setFilterOperator(filter);
+    whereComponent.setFilterOperator(filter);
 
     return root;
+  }
+
+  private Operator optimizeSelectIntoOperator(SelectIntoOperator operator, int fetchSize)
+      throws PathNumOverLimitException, LogicalOperatorException {
+    operator.setQueryOperator(optimizeQueryOperator(operator.getQueryOperator(), fetchSize));
+    return operator;
   }
 
   @TestOnly
